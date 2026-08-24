@@ -22,7 +22,8 @@
     "dev": "npm run dev -w @harnessvault/api",
     "dev:web": "npm run dev -w @harnessvault/web",
     "db:generate": "npm run db:generate -w @harnessvault/api",
-    "db:migrate": "npm run db:migrate -w @harnessvault/api"
+    "db:migrate": "npm run db:migrate -w @harnessvault/api",
+    "test:e2e": "npm run test:e2e -w @harnessvault/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

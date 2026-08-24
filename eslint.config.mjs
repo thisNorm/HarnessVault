@@ -13,6 +13,19 @@ export default tseslint.config(
       '**/drizzle/**',
     ],
   },
+  {
+    // Node로 직접 실행하는 스크립트. TS 파일은 컴파일러가 확인하므로 no-undef가 꺼져 있다.
+    files: ['**/*.mjs', '**/*.cjs', '**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,

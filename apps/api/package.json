@@ -9,7 +9,8 @@
     "start": "node dist/main.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:e2e": "node test/identity-e2e.mjs"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
