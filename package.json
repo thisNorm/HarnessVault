@@ -14,11 +14,12 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "ci": "npm run typecheck && npm run lint && npm run test && npm run build",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "dev": "npm run dev -w @harnessvault/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
