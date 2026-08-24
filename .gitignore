@@ -19,3 +19,6 @@ docs/
 *.log
 .DS_Store
 Thumbs.db
+
+# 로컬 에이전트 도구 설정
+.claude/

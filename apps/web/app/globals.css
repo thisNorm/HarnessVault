@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+@theme {
+  /* 색 — 다크 전용 콘솔 */
+  --color-bg: #0b0d12;
+  --color-bg-raised: #10131b;
+  --color-surface: #141824;
+  --color-surface-hover: #1a1f2d;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  --color-fg: #e4e7ee;
+  --color-fg-muted: #98a0b3;
+  --color-fg-subtle: #7e8698;
+
+  --color-accent: #5b5fe6;
+  --color-accent-hover: #6b6ef0;
+  --color-accent-text: #8f92f8;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: rgba(99, 102, 241, 0.14);
+
+  /* 상태 */
+  --color-state-active: #34d399;
+  --color-state-pending: #f5b544;
+  --color-state-locked: #8b93a5;
+  --color-state-deny: #f2686b;
+
+  /* 형태 */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 레이아웃 치수 */
+  --spacing-sidebar: 220px;
+  --spacing-header: 48px;
+
+  /* 타이포 */
+  --font-sans:
+    var(--font-inter), Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid var(--color-bg);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
