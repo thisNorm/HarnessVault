@@ -33,9 +33,15 @@ Resolve → Execute → Govern → Observe → Validate → Contribute → Evolv
 ```bash
 npm install
 cp .env.example .env
-docker compose up -d
+npm run db:up          # PostgreSQL + pgvector (Docker)
 npm run db:migrate
-npm run dev
+```
+
+터미널 두 개로 API와 콘솔을 띄운다.
+
+```bash
+npm run dev            # API      http://localhost:3000
+npm run dev:web        # 웹 콘솔  http://localhost:3100
 ```
 
 ## 검증
@@ -45,6 +51,12 @@ npm run ci
 ```
 
 `typecheck → lint → test → build` 순으로 실행한다.
+
+API가 떠 있는 상태에서 Identity 전 구간을 확인한다.
+
+```bash
+npm run test:e2e
+```
 
 ## 에이전트로 작업할 때
 
