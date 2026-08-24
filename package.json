@@ -19,7 +19,9 @@
     "ci": "npm run typecheck && npm run lint && npm run test && npm run build",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "dev": "npm run dev -w @harnessvault/api"
+    "dev": "npm run dev -w @harnessvault/api",
+    "db:generate": "npm run db:generate -w @harnessvault/api",
+    "db:migrate": "npm run db:migrate -w @harnessvault/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
