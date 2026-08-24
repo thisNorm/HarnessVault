@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { CreateOrganization } from './create-organization';
 import { useSession } from './session';
 import { Badge, ErrorState, LoadingState, Select } from './ui';
 
@@ -140,10 +141,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               onRetry={session.reload}
             />
           ) : !orgId ? (
-            <ErrorState
-              title="소속된 조직이 없습니다"
-              message="이 계정은 어느 조직에도 속해 있지 않습니다. 조직을 생성하거나 초대를 받아야 합니다."
-            />
+            <CreateOrganization />
           ) : (
             children
           )}

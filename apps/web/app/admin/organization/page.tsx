@@ -67,7 +67,7 @@ export default function OrganizationPage() {
 
   return (
     <>
-      <PageHeader title="조직" description="조직 정보와 Organization 멤버를 관리한다." />
+      <PageHeader title="조직" description="조직 정보와 Organization 멤버를 관리합니다." />
 
       <Card className="mb-5">
         <CardHeader title="조직 정보" />
@@ -99,7 +99,7 @@ export default function OrganizationPage() {
       <Card>
         <CardHeader
           title="멤버"
-          description="Organization 단위 Role 을 부여한다."
+          description="Organization 단위 Role을 부여합니다."
           action={
             <span className="text-2xs text-fg-subtle">
               {members.data ? `${members.data.members.length}명` : ''}

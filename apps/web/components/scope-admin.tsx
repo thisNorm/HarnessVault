@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { ApiError, api, del, post, type Scope, type ScopeMember } from '@/lib/api';
+import {
+  ApiError,
+  api,
+  del,
+  post,
+  type OrgMember,
+  type Scope,
+  type ScopeMember,
+} from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { useOrgId } from './session';
 import {
@@ -23,19 +31,19 @@ export type ScopeKind = 'teams' | 'projects' | 'groups';
 const CONFIG = {
   teams: {
     title: '팀',
-    description: 'Team 을 만들고 Organization 멤버를 배치한다.',
+    description: 'Team을 만들고 Organization 멤버를 배치합니다.',
     memberRoles: null,
     withTeam: false,
   },
   projects: {
     title: '프로젝트',
-    description: 'Project 를 만들고 Project Role 로 멤버를 배치한다.',
+    description: 'Project를 만들고 Project Role로 멤버를 배치합니다.',
     memberRoles: ['PROJECT_OWNER', 'PROJECT_LEAD', 'PROJECT_MEMBER'],
     withTeam: true,
   },
   groups: {
     title: '그룹',
-    description: 'Group 을 만들고 Organization 멤버를 배치한다.',
+    description: 'Group을 만들고 Organization 멤버를 배치합니다.',
     memberRoles: null,
     withTeam: false,
   },
@@ -66,7 +74,28 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
     [base, selectedId],
   );
 
+  // 조직 멤버 중에서 고르게 한다. UUID를 직접 치게 하면 콘솔이 쓸모없어진다.
+  const orgMembers = useResource<OrgMember[]>(
+    async () =>
+      (await api<Record<string, OrgMember[]>>(`/organizations/${orgId}/members`)).members ?? [],
+    [orgId],
+  );
+
+  // 프로젝트는 Team에 연결될 수 있다. UUID를 직접 치게 하지 않고 목록에서 고르게 한다.
+  const teams = useResource<Scope[]>(
+    config.withTeam
+      ? async () =>
+          (await api<Record<string, Scope[]>>(`/organizations/${orgId}/teams`)).teams ?? []
+      : null,
+    [orgId, config.withTeam],
+  );
+
   const selected = list.data?.find((item) => item.id === selectedId) ?? null;
+
+  const assignedIds = new Set((members.data ?? []).map((member) => member.userId));
+  const assignable = (orgMembers.data ?? []).filter(
+    (candidate) => !assignedIds.has(candidate.userId),
+  );
 
   async function run(fn: () => Promise<unknown>, reload: () => void) {
     setActionError(null);
@@ -159,8 +188,15 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
               <Input name="slug" required pattern="[a-z0-9-]+" placeholder="platform-core" />
             </Field>
             {config.withTeam ? (
-              <Field label="Team ID (선택)">
-                <Input name="teamId" placeholder="비우면 Team 없이 생성" />
+              <Field label="Team (선택)">
+                <Select name="teamId" defaultValue="">
+                  <option value="">Team 없이 생성</option>
+                  {(teams.data ?? []).map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </Select>
               </Field>
             ) : null}
             <Button type="submit" variant="primary" disabled={pending} className="mt-1 self-start">
@@ -180,7 +216,7 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
           ) : !list.data || list.data.length === 0 ? (
             <EmptyState
               title={`${config.title}이(가) 없습니다`}
-              hint={`위 폼으로 첫 ${config.title}을(를) 생성한다.`}
+              hint={`위 폼으로 첫 ${config.title}을(를) 만드세요.`}
             />
           ) : (
             <ul>
@@ -218,7 +254,7 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
             description={
               selected
                 ? `${selected.name} · ${selected.slug}`
-                : `${config.title}을(를) 선택하면 멤버를 관리할 수 있다.`
+                : `${config.title}을(를) 선택하면 멤버를 관리할 수 있습니다.`
             }
           />
 
@@ -231,8 +267,17 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
                 className="flex items-end gap-2.5 border-b border-border px-4 py-3"
               >
                 <div className="w-72">
-                  <Field label="User ID">
-                    <Input name="userId" required placeholder="usr_..." />
+                  <Field label="사용자">
+                    <Select name="userId" required defaultValue="">
+                      <option value="" disabled>
+                        조직 멤버 선택
+                      </option>
+                      {assignable.map((candidate) => (
+                        <option key={candidate.userId} value={candidate.userId}>
+                          {candidate.displayName} · {candidate.email}
+                        </option>
+                      ))}
+                    </Select>
                   </Field>
                 </div>
                 {config.memberRoles ? (
