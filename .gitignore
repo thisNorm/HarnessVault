@@ -1,0 +1,21 @@
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+
+# 설계 문서 — 로컬 전용, 커밋 대상 아님
+docs/
+
+# 도구 로컬 상태
+.codegraph/
+.superloopy/
+*.log
+.DS_Store
+Thumbs.db
