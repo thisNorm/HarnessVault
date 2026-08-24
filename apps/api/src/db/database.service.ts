@@ -6,6 +6,14 @@ import * as schema from './schema';
 
 export type PingResult = { ok: true } | { ok: false; reason: string };
 
+/** postgres.js는 연결 오류에서 message가 비어 있는 경우가 있어 name·code까지 합쳐 진단 가능하게 만든다. */
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const code = (error as { code?: string }).code;
+  const parts = [error.name, code, error.message].filter((part) => Boolean(part));
+  return [...new Set(parts)].join(' ') || 'unknown error';
+}
+
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
@@ -23,7 +31,7 @@ export class DatabaseService implements OnModuleDestroy {
       await this.sql`select 1`;
       return { ok: true };
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = describeError(error);
       this.logger.error(`데이터베이스 연결 실패: ${reason}`);
       return { ok: false, reason };
     }
