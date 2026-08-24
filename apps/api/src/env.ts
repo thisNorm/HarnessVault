@@ -22,6 +22,11 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.url({ protocol: /^postgresql$/ }),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(720),
+  // 쿠키 인증을 쓰므로 와일드카드 origin을 허용하지 않는다. 쉼표로 여러 개를 줄 수 있다.
+  WEB_ORIGINS: z
+    .string()
+    .default('http://localhost:3100')
+    .transform((value) => value.split(',').map((origin) => origin.trim()).filter(Boolean)),
 });
 
 export type Env = z.infer<typeof envSchema>;

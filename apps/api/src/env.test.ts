@@ -28,4 +28,14 @@ describe('loadEnv', () => {
   it('PORT가 숫자가 아니면 거부한다', () => {
     expect(() => loadEnv({ ...valid, PORT: 'abc' })).toThrow();
   });
+
+  it('WEB_ORIGINS 기본값은 웹 콘솔 개발 주소다', () => {
+    expect(loadEnv(valid).WEB_ORIGINS).toEqual(['http://localhost:3100']);
+  });
+
+  it('WEB_ORIGINS를 쉼표로 나누고 공백·빈 값을 정리한다', () => {
+    expect(
+      loadEnv({ ...valid, WEB_ORIGINS: 'http://a.test , http://b.test ,' }).WEB_ORIGINS,
+    ).toEqual(['http://a.test', 'http://b.test']);
+  });
 });
