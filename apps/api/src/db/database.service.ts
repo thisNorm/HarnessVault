@@ -19,7 +19,7 @@ export class DatabaseService implements OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
   private readonly sql = postgres(getEnv().DATABASE_URL, { max: 10 });
 
-  readonly db = drizzle(this.sql, { schema });
+  readonly db = drizzle(this.sql, { schema, casing: 'snake_case' });
 
   async onModuleDestroy(): Promise<void> {
     await this.sql.end({ timeout: 5 });
