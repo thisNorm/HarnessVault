@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { SessionProvider } from '@/components/session';
 import { ConsoleShell } from '@/components/shell';
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default function AssetsLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <ConsoleShell>{children}</ConsoleShell>

@@ -1,4 +1,14 @@
-import type { OrganizationRole, ProjectRole, PublicUser } from '@harnessvault/domain';
+import type {
+  AssetSelector,
+  AssetStatus,
+  AssetVersionStatus,
+  HarnessAssetType,
+  InheritanceMode,
+  OrganizationRole,
+  ProjectRole,
+  PublicUser,
+  ScopeType,
+} from '@harnessvault/domain';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -59,7 +69,16 @@ export const del = (path: string) => api<void>(path, { method: 'DELETE' });
 /* ---- 도메인 타입 ----
  * 역할·상태 enum은 packages/domain을 단일 출처로 쓴다. web에서 다시 정의하면 계약이 갈라진다. */
 
-export type { OrganizationRole, ProjectRole } from '@harnessvault/domain';
+export type {
+  AssetSelector,
+  AssetStatus,
+  AssetVersionStatus,
+  HarnessAssetType,
+  InheritanceMode,
+  OrganizationRole,
+  ProjectRole,
+  ScopeType,
+} from '@harnessvault/domain';
 export type User = PublicUser;
 
 export interface Organization {
@@ -94,4 +113,55 @@ export interface ScopeMember {
   email: string;
   displayName: string;
   role?: ProjectRole;
+}
+
+/* ---- Harness 자산 ---- */
+
+export interface Capability {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  parentId: string | null;
+}
+
+export interface Asset {
+  id: string;
+  capabilityId: string | null;
+  type: HarnessAssetType;
+  key: string;
+  name: string;
+  description: string;
+  scopeType: ScopeType;
+  scopeId: string;
+  inheritanceMode: InheritanceMode;
+  status: AssetStatus;
+  ownerType: string;
+  ownerId: string;
+  selector: AssetSelector;
+}
+
+export interface AssetVersionRow {
+  id: string;
+  version: string;
+  status: AssetVersionStatus;
+  summary: string;
+  /** 실측이 아닌 추정치다. 그대로 표시하지 않고 `~`를 붙인다. */
+  estimatedTokens: number | null;
+}
+
+export interface RelatedAsset {
+  id: string;
+  type: string;
+  assetId: string;
+  key: string;
+  name: string;
+  assetType: HarnessAssetType;
+}
+
+export interface AssetDetail {
+  asset: Asset;
+  versions: AssetVersionRow[];
+  relations: { outgoing: RelatedAsset[]; incoming: RelatedAsset[] };
+  activeVersionCount: number;
 }

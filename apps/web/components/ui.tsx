@@ -1,5 +1,16 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 
+import {
+  assetStatuses,
+  harnessAssetTypes,
+  scopeTypes,
+} from '@harnessvault/domain';
+
+// 필터 옵션은 도메인 패키지를 단일 출처로 쓴다. 여기서 다시 나열하면 계약이 갈라진다.
+export const ASSET_TYPES = harnessAssetTypes;
+export const ASSET_STATUSES = assetStatuses;
+export const SCOPE_TYPES = scopeTypes;
+
 type Tone = 'active' | 'pending' | 'locked' | 'deny' | 'accent';
 
 const TONE: Record<Tone, string> = {
@@ -23,7 +34,12 @@ export function Badge({ tone = 'locked', children }: { tone?: Tone; children: Re
 const STATUS_TONE: Record<string, Tone> = {
   ACTIVE: 'active',
   PENDING: 'pending',
+  CANDIDATE: 'pending',
+  DRAFT: 'locked',
   LOCKED: 'locked',
+  SUPERSEDED: 'locked',
+  ARCHIVED: 'locked',
+  DEPRECATED: 'deny',
   DENY: 'deny',
 };
 

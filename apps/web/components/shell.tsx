@@ -10,9 +10,15 @@ import { Badge, ErrorState, LoadingState, Select } from './ui';
 
 /**
  * 아직 없는 라우트는 노출하지 않는다.
- * 이후 Harness 운영 / 분석 / 승인 그룹이 같은 형태로 추가된다.
+ * 이후 Resolve / Traces / Candidates / Approvals / Analytics가 같은 형태로 추가된다.
+ *
+ * 자산은 타입별로 메뉴를 쪼개지 않는다. `type`은 필드이므로 목록의 패싯이다.
  */
 const NAV: { label: string; items: { href: string; label: string; icon: ReactNode }[] }[] = [
+  {
+    label: 'Harness',
+    items: [{ href: '/assets', label: '자산', icon: <IconAsset /> }],
+  },
   {
     label: '조직 관리',
     items: [
@@ -24,7 +30,7 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
   },
 ];
 
-export function AdminShell({ children }: { children: ReactNode }) {
+export function ConsoleShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { session, organization, orgId, setOrgId } = useSession();
   const router = useRouter();
@@ -53,7 +59,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 {group.label}
               </p>
               {group.items.map((item) => {
-                const active = pathname === item.href;
+                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.href}
@@ -161,6 +167,15 @@ const ICON = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
+
+function IconAsset() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <path d="M8 1.8 14 5v6l-6 3.2L2 11V5z" />
+      <path d="M2 5l6 3.2L14 5M8 8.2v6" />
+    </svg>
+  );
+}
 
 function IconOrg() {
   return (
