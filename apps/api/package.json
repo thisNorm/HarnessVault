@@ -10,7 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test:e2e": "node test/identity-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs",
+    "test:e2e": "node test/identity-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs && node test/mcp-e2e.mjs",
     "db:seed": "node test/seed.mjs"
   },
   "devDependencies": {
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@harnessvault/domain": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@nestjs/common": "^11.2.1",
     "@nestjs/core": "^11.2.1",
     "@nestjs/platform-express": "^11.2.1",

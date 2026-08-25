@@ -5,7 +5,7 @@
 //   node scripts/scan-secrets.mjs         스테이징된 변경만 검사 (pre-commit 훅)
 //   node scripts/scan-secrets.mjs --all   추적 중인 파일 전체 검사
 //
-// 오탐이 확실한 줄에는 같은 줄에 secret-scan:allow 주석을 남긴다.
+// 오탐이 확실한 줄에는 같은 줄이나 바로 윗줄에 secret-scan:allow 주석을 남긴다.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -53,10 +53,12 @@ function git(args) {
 }
 
 function listFiles(all) {
+  // --all은 추적 파일뿐 아니라 아직 add되지 않은 파일도 본다.
+  // 추적된 것만 보면 새 파일이 통째로 빠져 "통과"가 거짓 안심이 된다.
   const out = all
-    ? git(['ls-files', '-z'])
+    ? git(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])
     : git(['diff', '--cached', '--name-only', '--diff-filter=ACM', '-z']);
-  return out.split('\0').filter(Boolean);
+  return [...new Set(out.split('\0').filter(Boolean))];
 }
 
 function readFile(path, all) {
@@ -69,8 +71,9 @@ function readFile(path, all) {
   }
 }
 
-function scanLine(line) {
-  if (line.includes(ALLOW_MARKER)) return null;
+function scanLine(line, previousLine = '') {
+  // 같은 줄이 길면 표식을 달기 어려우므로 바로 앞 줄도 인정한다.
+  if (line.includes(ALLOW_MARKER) || previousLine.includes(ALLOW_MARKER)) return null;
 
   for (const rule of HIGH_CONFIDENCE) {
     if (rule.re.test(line)) return rule.name;
@@ -97,8 +100,9 @@ for (const path of listFiles(all)) {
   const content = readFile(path, all);
   if (content === null || content.includes('\0')) continue;
 
-  content.split(/\r?\n/).forEach((line, index) => {
-    const reason = scanLine(line);
+  const lines = content.split(/\r?\n/);
+  lines.forEach((line, index) => {
+    const reason = scanLine(line, index > 0 ? (lines[index - 1] ?? '') : '');
     if (reason) {
       findings.push({ path, line: index + 1, reason, text: line.trim().slice(0, 120) });
     }
@@ -117,6 +121,6 @@ for (const f of findings) {
 }
 console.error(
   `\n실제 자격증명이면 값을 제거하고 환경변수로 옮기세요.` +
-    `\n오탐이면 해당 줄 끝에 ${ALLOW_MARKER} 주석을 남기세요.\n`,
+    `\n오탐이면 해당 줄 끝이나 바로 윗줄에 ${ALLOW_MARKER} 주석을 남기세요.\n`,
 );
 process.exit(1);

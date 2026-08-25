@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { HarnessModule } from '../harness/harness.module';
+import { IdentityModule } from '../identity/identity.module';
+import { ResolverModule } from '../resolver/resolver.module';
+import { McpController } from './mcp.controller';
+import { McpService } from './mcp.service';
+
+@Module({
+  imports: [IdentityModule, HarnessModule, ResolverModule],
+  controllers: [McpController],
+  providers: [McpService],
+})
+export class McpModule {}
