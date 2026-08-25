@@ -1,5 +1,6 @@
 // Phase 1 완료 조건 검증: 가입 → 조직 생성 → 팀/프로젝트/그룹에 사용자 배치
 import { randomBytes } from 'node:crypto';
+import postgres from 'postgres';
 
 const BASE = 'http://localhost:3000';
 
@@ -106,6 +107,30 @@ check('비멤버는 조직 자체가 404', (await call('GET', `/organizations/${
 cookie = adminCookie;
 check('로그아웃', (await call('POST', '/auth/logout')).status, 204);
 check('로그아웃 후 401', (await call('GET', '/auth/me')).status, 401);
+
+
+// 구현원칙 #8 — 중요한 상태 변경은 Audit Event를 남긴다.
+// 트랜잭션 안에서 다른 커넥션으로 감사를 쓰면 조용히 유실되므로 실제 행을 확인한다.
+console.log('\n── 감사 로그 ──');
+const dbUrl =
+  process.env.DATABASE_URL ?? 'postgresql://harness:harness@localhost:5432/harnessvault';
+const sql = postgres(dbUrl);
+try {
+  const rows = await sql`select event_type from audit_events where organization_id = ${orgId}`;
+  const recorded = new Set(rows.map((row) => row.event_type));
+  for (const expected of [
+    'organization.created',
+    'team.created',
+    'project.created',
+    'group.created',
+    'membership.granted',
+    'membership.revoked',
+  ]) {
+    check(`${expected} 기록됨`, recorded.has(expected), true);
+  }
+} finally {
+  await sql.end();
+}
 
 console.log(`\n결과: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

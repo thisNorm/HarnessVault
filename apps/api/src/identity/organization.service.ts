@@ -40,14 +40,18 @@ export class OrganizationService {
         role: 'ORG_ADMIN',
       });
 
-      await this.audit.record({
-        organizationId: created.id,
-        actorUserId,
-        eventType: 'organization.created',
-        targetType: 'organization',
-        targetId: created.id,
-        metadata: { slug: created.slug },
-      });
+      // tx를 넘긴다. 다른 커넥션으로 쓰면 아직 커밋되지 않은 조직을 참조하지 못해 실패한다.
+      await this.audit.record(
+        {
+          organizationId: created.id,
+          actorUserId,
+          eventType: 'organization.created',
+          targetType: 'organization',
+          targetId: created.id,
+          metadata: { slug: created.slug },
+        },
+        tx,
+      );
 
       return created;
     });
