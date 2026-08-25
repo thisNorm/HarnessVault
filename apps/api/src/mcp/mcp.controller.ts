@@ -8,6 +8,7 @@ import {
   resolveTaskInputSchema,
 } from '@harnessvault/domain';
 import { parseBearerToken } from '../identity/session-token';
+import { ApprovalService } from '../approval/approval.service';
 import { ResourceService } from '../resource/resource.service';
 import { type McpIdentity, McpService } from './mcp.service';
 
@@ -42,6 +43,7 @@ export class McpController {
   constructor(
     private readonly mcp: McpService,
     private readonly resources: ResourceService,
+    private readonly approvals: ApprovalService,
   ) {}
 
   @All()
@@ -313,6 +315,117 @@ export class McpController {
       async (args) =>
         respond('company.git.read', () =>
           this.resources.gitRead(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    /* ---------------- 쓰기 · 승인 (§26 · §34) ---------------- */
+
+    // 승인자가 판단할 수 있어야 한다. reason은 필수다.
+    const approvalContext = {
+      reason: z.string().min(1).max(2000).describe('이 변경이 필요한 이유'),
+      risk: z.string().max(2000).optional().describe('예상되는 위험'),
+      rollbackPlan: z.string().max(2000).optional().describe('되돌리는 방법'),
+      verificationPlan: z.string().max(2000).optional().describe('변경 후 검증 방법'),
+    };
+
+    server.registerTool(
+      'company.db.update',
+      {
+        title: '회사 DB 변경 요청',
+        description:
+          'INSERT · UPDATE · DELETE를 요청한다. 정책이 승인을 요구하면 실행되지 않고 승인 요청만 만들어진다. 승인 뒤 company.approval.execute로 실행한다.',
+        inputSchema: {
+          resourceId: z.uuid(),
+          query: z.string().min(1).max(10_000),
+          purpose,
+          projectId: z.uuid().optional(),
+          ...approvalContext,
+        },
+      },
+      async (args) =>
+        respond('company.db.update', () =>
+          this.resources.requestWrite(identity.organizationId, identity.user.id, {
+            resourceId: args.resourceId,
+            action: 'db.update',
+            payload: { query: args.query },
+            proposedChange: args.query,
+            purpose: args.purpose,
+            projectId: args.projectId ?? null,
+            context: {
+              reason: args.reason,
+              risk: args.risk ?? null,
+              rollbackPlan: args.rollbackPlan ?? null,
+              verificationPlan: args.verificationPlan ?? null,
+            },
+            clientName,
+          }),
+        ),
+    );
+
+    server.registerTool(
+      'company.files.write',
+      {
+        title: '회사 파일 쓰기 요청',
+        description:
+          '파일을 새로 쓰거나 덮어쓴다. 정책이 승인을 요구하면 실행되지 않고 승인 요청만 만들어진다.',
+        inputSchema: {
+          resourceId: z.uuid(),
+          path: z.string().min(1).max(1000),
+          content: z.string().max(1_000_000),
+          purpose,
+          projectId: z.uuid().optional(),
+          ...approvalContext,
+        },
+      },
+      async (args) =>
+        respond('company.files.write', () =>
+          this.resources.requestWrite(identity.organizationId, identity.user.id, {
+            resourceId: args.resourceId,
+            action: 'files.write',
+            payload: { path: args.path, content: args.content },
+            proposedChange: `${args.path} (${args.content.length}자)`,
+            purpose: args.purpose,
+            projectId: args.projectId ?? null,
+            context: {
+              reason: args.reason,
+              risk: args.risk ?? null,
+              rollbackPlan: args.rollbackPlan ?? null,
+              verificationPlan: args.verificationPlan ?? null,
+            },
+            clientName,
+          }),
+        ),
+    );
+
+    server.registerTool(
+      'company.approval.status',
+      {
+        title: '승인 요청 상태 확인',
+        description:
+          '승인 요청의 현재 상태를 확인한다. 스스로 승인 여부를 판단하지 말고 반드시 이 값을 본다.',
+        inputSchema: { approvalRequestId: z.uuid() },
+      },
+      async (args) =>
+        respond('company.approval.status', () =>
+          this.approvals.status(identity.organizationId, args.approvalRequestId, identity.user.id),
+        ),
+    );
+
+    server.registerTool(
+      'company.approval.execute',
+      {
+        title: '승인된 요청 실행',
+        description:
+          '승인된 요청을 실행한다. 서버가 보관한 요청 내용으로 실행되며, 여기서 내용을 바꿀 수 없다.',
+        inputSchema: { approvalRequestId: z.uuid() },
+      },
+      async (args) =>
+        respond('company.approval.execute', () =>
+          this.resources.executeApproved(
+            identity.organizationId,
+            identity.user.id,
+            args.approvalRequestId,
+          ),
         ),
     );
 

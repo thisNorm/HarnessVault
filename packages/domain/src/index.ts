@@ -4,3 +4,4 @@ export * from './resolver';
 export * from './compiler';
 export * from './resource';
 export * from './policy';
+export * from './approval';

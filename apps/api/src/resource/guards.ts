@@ -183,6 +183,34 @@ export function assertReadOnlyQuery(sql: string): string {
   return withoutTrailing;
 }
 
+/**
+ * 쓰기 질의 검증. `db.update`는 SELECT가 아닌 문장만 받는다 —
+ * 읽기는 `db.query`가 하므로 여기로 SELECT가 오면 잘못 부른 것이다.
+ *
+ * 이 경로는 승인 없이 도달할 수 없다. 그래서 read only 트랜잭션을 쓰지 않는다.
+ */
+export function assertWriteQuery(sql: string): string {
+  const cleaned = stripSqlComments(sql).trim();
+  if (cleaned === '') throw new ResourceQueryError('빈 질의입니다');
+
+  const withoutTrailing = cleaned.replace(/;\s*$/, '');
+  if (withoutTrailing.includes(';')) {
+    // 승인자가 본 것과 실행되는 것이 같아야 한다. 여러 문장은 검토를 어렵게 만든다.
+    throw new ResourceQueryError('한 번에 한 문장만 실행할 수 있습니다');
+  }
+
+  const firstWord = withoutTrailing.split(/[\s(]+/)[0]?.toLowerCase() ?? '';
+  if (firstWord === 'select') {
+    throw new ResourceQueryError('읽기 질의는 db.query를 사용하세요');
+  }
+  if (!['insert', 'update', 'delete', 'with'].includes(firstWord)) {
+    // DDL·권한 변경은 승인 게이트로도 열지 않는다. 되돌리기가 사실상 불가능하다.
+    throw new ResourceQueryError('INSERT · UPDATE · DELETE 문장만 실행할 수 있습니다');
+  }
+
+  return withoutTrailing;
+}
+
 /* ---------------- 오류 메시지 정화 ---------------- */
 
 const CONNECTION_STRING = /\b[a-z][a-z0-9+.-]*:\/\/[^\s'"]*/gi;

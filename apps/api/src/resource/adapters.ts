@@ -1,13 +1,14 @@
 import { execFile } from 'node:child_process';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { join, relative, sep } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import postgres from 'postgres';
 import type { ResourceConfig } from '@harnessvault/domain';
 import {
   ResourceCredentialError,
   assertReadOnlyQuery,
+  assertWriteQuery,
   redactSecrets,
   resolveCredential,
   resolveInsideRoot,
@@ -153,6 +154,29 @@ export const fileSystemAdapter = {
       },
     };
   },
+
+  /** 승인을 거친 뒤에만 도달한다. root 밖으로는 여전히 나갈 수 없다. */
+  async write(
+    config: ResourceConfig,
+    request: { path: string; content: string },
+  ): Promise<AdapterResult<{ path: string; byteCount: number }>> {
+    const root = requireRoot(config);
+    const target = resolveInsideRoot(root, request.path);
+    const maxBytes = config.maxBytes ?? DEFAULT_MAX_BYTES;
+
+    const bytes = Buffer.byteLength(request.content, 'utf8');
+    if (bytes > maxBytes) {
+      throw new ResourceUnavailableError(`내용이 ${maxBytes} 바이트 제한을 넘습니다`);
+    }
+
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, request.content, 'utf8');
+
+    return {
+      data: { path: request.path, byteCount: bytes },
+      trace: { objects: [request.path], byteCount: bytes },
+    };
+  },
 };
 
 /* ---------------- DATABASE ---------------- */
@@ -242,6 +266,26 @@ export const databaseAdapter = {
           rowCount: list.length,
           queryFingerprint: fingerprint(statement),
         },
+      };
+    });
+  },
+
+  /**
+   * 쓰기. **승인을 거친 뒤에만 도달한다.**
+   * 트랜잭션으로 감싸 실패 시 부분 반영이 남지 않게 한다.
+   */
+  async update(
+    credentialRef: string | null,
+    request: { query: string },
+  ): Promise<AdapterResult<{ rowCount: number }>> {
+    const statement = assertWriteQuery(request.query);
+
+    return withDatabase(credentialRef, async (sql) => {
+      const result = await sql.begin(async (tx) => tx.unsafe(statement));
+      const rowCount = Array.isArray(result) ? result.length : ((result as { count?: number })?.count ?? 0);
+      return {
+        data: { rowCount },
+        trace: { objects: [], rowCount, queryFingerprint: fingerprint(statement) },
       };
     });
   },

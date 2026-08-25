@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApprovalModule } from './approval/approval.module';
 import { AuditModule } from './audit/audit.module';
 import { CompilerModule } from './compiler/compiler.module';
 import { DatabaseModule } from './db/database.module';
@@ -19,6 +20,7 @@ import { ResourceModule } from './resource/resource.module';
     ResolverModule,
     CompilerModule,
     PolicyModule,
+    ApprovalModule,
     ResourceModule,
     McpModule,
     HealthModule,

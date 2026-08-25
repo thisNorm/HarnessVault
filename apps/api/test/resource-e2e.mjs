@@ -236,7 +236,12 @@ check('컬럼 포함', schema.data.objects.find((o) => o.table === 'events_summa
 const query = unwrap(
   await rpc(
     'company.db.query',
-    { resourceId: dbId, query: 'select topic, count from events_summary order by topic', purpose: 'MQTT 수집량 확인' },
+    // 다른 e2e가 같은 테이블에 쓰므로 시드 행으로 한정한다.
+    {
+      resourceId: dbId,
+      query: "select topic, count from events_summary where topic like 'sensor/%' order by topic",
+      purpose: 'MQTT 수집량 확인',
+    },
     token,
     orgId,
   ),

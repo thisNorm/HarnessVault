@@ -13,7 +13,8 @@ import type {
   UpdateResourceInput,
 } from '@harnessvault/domain';
 import { and, asc, eq } from 'drizzle-orm';
-import type { ResourceAction } from '@harnessvault/domain';
+import type { ApprovalRequestContext, ResourceAction } from '@harnessvault/domain';
+import { ApprovalService } from '../approval/approval.service';
 import { AuditService } from '../audit/audit.service';
 import { PolicyService } from '../policy/policy.service';
 import { DatabaseService } from '../db/database.service';
@@ -25,6 +26,7 @@ import {
   fileSystemAdapter,
   gitAdapter,
 } from './adapters';
+import { assertWriteQuery } from './guards';
 import {
   ResourceCredentialError,
   ResourcePathError,
@@ -40,6 +42,7 @@ export class ResourceService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly policy: PolicyService,
+    private readonly approvals: ApprovalService,
   ) {}
 
   /** 관리 API·MCP 응답용. credential **값**은 절대 담기지 않는다. */
@@ -373,6 +376,138 @@ export class ResourceService {
     await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'git.status');
     return this.execute(organizationId, userId, row, 'git.status', args.purpose, () =>
       gitAdapter.status(row.config),
+    );
+  }
+
+  /* ---------------- 쓰기 (승인 필요) ---------------- */
+
+  /**
+   * 쓰기 Action의 진입점.
+   *
+   * 정책이 ALLOW면 바로 실행한다 — 승인이 필요 없는 Action에 절차를 붙이면 아무도 쓰지 않는다.
+   * APPROVAL_REQUIRED면 요청을 만들고 **실행하지 않는다.**
+   */
+  async requestWrite(
+    organizationId: string,
+    userId: string,
+    args: {
+      resourceId: string;
+      action: 'db.update' | 'files.write';
+      payload: Record<string, unknown>;
+      proposedChange: string;
+      purpose: string;
+      projectId?: string | null;
+      context: ApprovalRequestContext;
+      clientName?: string | null;
+      clientReportedModel?: string | null;
+    },
+  ): Promise<
+    | { executed: true; result: unknown }
+    | { executed: false; approvalRequestId: string; status: string; reason: string }
+  > {
+    const expectedType = args.action === 'db.update' ? 'DATABASE' : 'FILE_SYSTEM';
+    const row = await this.findExecutable(organizationId, args.resourceId, expectedType);
+
+    // 실행 가능한 형태인지 먼저 본다. 승인자에게 실행 불가능한 요청을 보내지 않는다.
+    if (args.action === 'db.update') assertWriteQuery(String(args.payload.query ?? ''));
+
+    const decision = await this.policy.decide(
+      organizationId,
+      { userId, projectId: args.projectId ?? null },
+      { id: row.id, type: row.type, classification: row.classification },
+      args.action,
+    );
+
+    if (decision.decision === 'DENY') {
+      throw new ForbiddenException({
+        code: 'POLICY_DENIED',
+        message: decision.reason,
+        reasonCode: decision.reasonCode,
+        policyIds: decision.policyIds,
+      });
+    }
+
+    if (decision.decision === 'ALLOW') {
+      const result = await this.runWrite(organizationId, userId, row, args.action, args.purpose, args.payload);
+      return { executed: true, result };
+    }
+
+    const created = await this.approvals.createRequest({
+      organizationId,
+      requesterUserId: userId,
+      projectId: args.projectId ?? null,
+      resourceId: row.id,
+      action: args.action,
+      payload: args.payload,
+      proposedChange: args.proposedChange,
+      context: args.context,
+      policyIds: decision.policyIds,
+      approvalPolicyId: decision.approvalPolicyId,
+      clientName: args.clientName ?? null,
+      clientReportedModel: args.clientReportedModel ?? null,
+    });
+
+    return {
+      executed: false,
+      approvalRequestId: created.id,
+      status: created.status,
+      reason: decision.reason,
+    };
+  }
+
+  /**
+   * 승인된 요청을 실행한다.
+   *
+   * **서버가 보관한 payload를 쓴다.** 호출자가 다시 보낸 값을 쓰면
+   * "안전한 쿼리로 승인받고 위험한 쿼리로 실행"이 가능해진다(§34).
+   */
+  async executeApproved(organizationId: string, userId: string, approvalRequestId: string) {
+    const request = await this.approvals.beginExecution(organizationId, approvalRequestId, userId);
+    const row = await this.findRow(organizationId, request.resourceId);
+    const payload = this.approvals.storedPayload(request);
+
+    try {
+      const result = await this.runWrite(
+        organizationId,
+        userId,
+        row,
+        request.action as 'db.update' | 'files.write',
+        `승인 ${approvalRequestId} 실행`,
+        payload,
+      );
+      await this.approvals.finishExecution(organizationId, approvalRequestId, userId, {
+        ok: true,
+        summary: { action: request.action, resourceId: row.id },
+      });
+      return { status: 'EXECUTED' as const, result };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      await this.approvals.finishExecution(organizationId, approvalRequestId, userId, {
+        ok: false,
+        reason,
+      });
+      throw error;
+    }
+  }
+
+  private async runWrite(
+    organizationId: string,
+    userId: string,
+    row: ResourceRow,
+    action: 'db.update' | 'files.write',
+    purpose: string,
+    payload: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (action === 'db.update') {
+      return this.execute(organizationId, userId, row, 'db.update', purpose, () =>
+        databaseAdapter.update(row.credentialRef, { query: String(payload.query ?? '') }),
+      );
+    }
+    return this.execute(organizationId, userId, row, 'files.write', purpose, () =>
+      fileSystemAdapter.write(row.config, {
+        path: String(payload.path ?? ''),
+        content: String(payload.content ?? ''),
+      }),
     );
   }
 

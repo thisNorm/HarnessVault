@@ -7,6 +7,7 @@ import {
   ResourcePathError,
   ResourceQueryError,
   assertReadOnlyQuery,
+  assertWriteQuery,
   isAllowedCredentialRef,
   redactSecrets,
   resolveCredential,
@@ -211,5 +212,37 @@ describe('redactSecrets', () => {
 
   it('너무 짧은 값은 지우지 않는다 — 문장이 걸레가 된다', () => {
     expect(redactSecrets('a query failed', ['a'])).toBe('a query failed');
+  });
+});
+
+describe('assertWriteQuery', () => {
+  it('INSERT · UPDATE · DELETE를 허용한다', () => {
+    expect(() => assertWriteQuery("insert into t (a) values (1)")).not.toThrow();
+    expect(() => assertWriteQuery('update t set a = 1')).not.toThrow();
+    expect(() => assertWriteQuery('delete from t where a = 1')).not.toThrow();
+  });
+
+  it('읽기 질의는 db.query로 보낸다', () => {
+    expect(() => assertWriteQuery('select 1')).toThrow(/db.query/);
+  });
+
+  it('DDL·권한 변경은 승인 게이트로도 열지 않는다', () => {
+    // 되돌리기가 사실상 불가능하다.
+    for (const bad of ['drop table t', 'alter table t add column x int', 'grant all on t to public', 'truncate t']) {
+      expect(() => assertWriteQuery(bad), bad).toThrow(ResourceQueryError);
+    }
+  });
+
+  it('여러 문장을 거부한다', () => {
+    // 승인자가 본 것과 실행되는 것이 같아야 한다.
+    expect(() => assertWriteQuery('update t set a = 1; drop table t')).toThrow(ResourceQueryError);
+  });
+
+  it('끝의 세미콜론 하나는 허용한다', () => {
+    expect(assertWriteQuery('delete from t;')).toBe('delete from t');
+  });
+
+  it('빈 질의를 거부한다', () => {
+    expect(() => assertWriteQuery('  ')).toThrow(ResourceQueryError);
   });
 });

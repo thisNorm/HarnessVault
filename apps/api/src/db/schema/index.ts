@@ -5,3 +5,4 @@ export * from './audit';
 export * from './harness';
 export * from './resource';
 export * from './policy';
+export * from './approval';
