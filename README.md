@@ -114,6 +114,31 @@ Phase 6은 **읽기 전용**이다. `company.db.query`는 SELECT만 실행하며
 여러 조직에 속해 있으면 반드시 지정해야 한다 — 어느 조직 Harness를 받았는지
 모른 채 일하게 두지 않기 위해서다.
 
+## 의미 검색 (선택)
+
+중복 기여를 찾는 `company.find_similar`와 `company.contribute`는 기본적으로
+**어휘 기반**으로 동작한다(응답의 `method: "LEXICAL"`). 임베딩 제공자를 붙이면
+pgvector 의미 검색으로 바뀐다(`method: "VECTOR"`).
+
+```bash
+ollama pull nomic-embed-text
+```
+
+```bash
+# .env
+EMBEDDING_URL=http://localhost:11434/api/embed
+EMBEDDING_MODEL=nomic-embed-text
+```
+
+- **768차원 모델만 쓸 수 있다.** 컬럼 DDL이 차원을 요구하므로 다른 차원의 모델을 붙이면
+  저장을 거부하고 로그에 이유를 남긴다 — 잘라 넣어 유사도를 조용히 망가뜨리지 않는다.
+- 제공자가 없거나 죽어 있어도 기여·검색은 그대로 동작한다. 부가 기능의 장애가 본 경로를 막지 않는다.
+- 기존 자산에 임베딩을 채우려면 조직 관리자로 아래를 호출한다.
+
+```bash
+curl -X POST http://localhost:3000/organizations/<orgId>/contributions/embeddings/backfill -b harness_session=<token>
+```
+
 ## 시크릿 스캔
 
 `npm install`이 `core.hooksPath`를 `.githooks`로 설정하므로 커밋 시 자격증명 검사가 자동 실행된다.
