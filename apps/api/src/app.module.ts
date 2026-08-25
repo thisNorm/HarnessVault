@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ApprovalModule } from './approval/approval.module';
 import { AuditModule } from './audit/audit.module';
 import { CompilerModule } from './compiler/compiler.module';
+import { ContributionModule } from './contribution/contribution.module';
 import { DatabaseModule } from './db/database.module';
 import { HarnessModule } from './harness/harness.module';
 import { HealthModule } from './health/health.module';
@@ -25,6 +26,7 @@ import { TraceModule } from './trace/trace.module';
     ApprovalModule,
     ResourceModule,
     OutputContractModule,
+    ContributionModule,
     TraceModule,
     McpModule,
     HealthModule,

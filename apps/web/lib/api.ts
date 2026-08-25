@@ -325,6 +325,37 @@ export interface ApprovalRequestView {
   failureReason: string | null;
 }
 
+/* ---- Contribution (Phase 11) ---- */
+
+export interface ContributionSummary {
+  id: string;
+  status: 'CANDIDATE' | 'PROMOTED' | 'REJECTED' | 'WITHDRAWN';
+  type: string;
+  proposedKey: string;
+  name: string;
+  description: string;
+  summary: string;
+  rationale: string;
+  proposedScopeType: ScopeType;
+  proposedScopeId: string | null;
+  capabilityId: string | null;
+  submittedByUserId: string;
+  submittedByDisplayName: string;
+  traceId: string | null;
+  /** 중복이어도 거절되지 않는다. 사실만 기록된다. */
+  duplicateOfAssetId: string | null;
+  duplicateScore: number | null;
+  similarityMethod: 'VECTOR' | 'LEXICAL';
+  embeddingStatus: 'NOT_CONFIGURED' | 'OK' | 'FAILED';
+  reviewedByUserId: string | null;
+  reviewedByDisplayName: string | null;
+  reviewedAt: string | null;
+  reviewNote: string;
+  promotedAssetId: string | null;
+  promotedVersionId: string | null;
+  createdAt: string;
+}
+
 /* ---- Output Contract (Phase 10) ---- */
 
 export interface ResolvedOutputContract {

@@ -50,6 +50,13 @@
       "when": 1787636715548,
       "tag": "0006_smiling_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787637658248,
+      "tag": "0007_clumsy_princess_powerful",
+      "breakpoints": true
     }
   ]
 }

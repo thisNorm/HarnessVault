@@ -27,6 +27,12 @@ export const envSchema = z.object({
     .string()
     .default('http://localhost:3100')
     .transform((value) => value.split(',').map((origin) => origin.trim()).filter(Boolean)),
+
+  // 임베딩은 선택이다. 없으면 중복 탐색이 어휘 기반으로 동작한다 —
+  // Ollama가 없는 환경에서도 시스템 전체가 돌아야 한다.
+  EMBEDDING_URL: z.url().optional(),
+  EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

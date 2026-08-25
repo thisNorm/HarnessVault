@@ -205,11 +205,8 @@ for (const expected of [
   check(`${expected} 등록됨`, toolNames.includes(expected), true);
 }
 check('Resource 툴도 함께 노출', toolNames.includes('company.files.read'), true);
-check(
-  'contribute는 아직 없음',
-  toolNames.includes('company.contribute'),
-  false,
-);
+// Phase 11에서 기여 경로가 열렸다.
+check('contribute도 노출', toolNames.includes('company.contribute'), true);
 
 console.log('\n── company.resolve_task ──');
 const resolveArgs = {

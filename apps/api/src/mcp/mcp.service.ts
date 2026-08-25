@@ -1,5 +1,10 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
-import type { HarnessAssetType, PublicUser, ResolveTaskInput } from '@harnessvault/domain';
+import type {
+  ContributeInput,
+  HarnessAssetType,
+  PublicUser,
+  ResolveTaskInput,
+} from '@harnessvault/domain';
 import { and, eq } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
@@ -8,6 +13,7 @@ import { renderStructuredContent } from '../compiler/render';
 import { AssetService } from '../harness/asset.service';
 import { AuthService } from '../identity/auth.service';
 import { ResolverService } from '../resolver/resolver.service';
+import { ContributionService } from '../contribution/contribution.service';
 import { rankAssets } from './similarity';
 
 export interface McpIdentity {
@@ -44,6 +50,7 @@ export class McpService {
     private readonly assets: AssetService,
     private readonly resolver: ResolverService,
     private readonly audit: AuditService,
+    private readonly contributions: ContributionService,
   ) {}
 
   /**
@@ -218,35 +225,17 @@ export class McpService {
   }
 
   async findSimilar(identity: McpIdentity, args: FindSimilarArgs) {
-    const all = await this.assets.list(identity.organizationId, {});
-    const text = [args.title, args.description, JSON.stringify(args.structuredContent ?? '')].join(
-      ' ',
-    );
+    // 벡터·어휘 판정은 ContributionService 한 곳에 있다. 두 곳에서 다르게 고르면 결과가 갈린다.
+    const { candidates, method } = await this.contributions.similarTo(identity.organizationId, {
+      title: args.title,
+      description: [args.description, JSON.stringify(args.structuredContent ?? '')].join(' '),
+      capabilityId: args.capability ?? null,
+    });
+    return { method, candidates };
+  }
 
-    const ranked = rankAssets(
-      all.map((asset) => ({
-        key: asset.key,
-        name: asset.name,
-        description: asset.description,
-        capabilityId: asset.capabilityId,
-        assetId: asset.id,
-        type: asset.type,
-      })),
-      { text, capabilityId: args.capability ?? null },
-      10,
-    );
-
-    return {
-      // Phase 11에서 pgvector 의미 검색으로 바뀐다. 지금은 어휘 기반이다.
-      method: 'LEXICAL' as const,
-      candidates: ranked.map((item) => ({
-        assetId: item.assetId,
-        key: item.key,
-        name: item.name,
-        score: item.score,
-        relationHint: item.score >= 0.5 ? 'DUPLICATE_CANDIDATE' : 'RELATED',
-      })),
-    };
+  async contribute(identity: McpIdentity, args: ContributeInput) {
+    return this.contributions.submit(identity.organizationId, identity.user.id, args);
   }
 
   async recordToolCall(

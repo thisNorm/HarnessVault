@@ -1,5 +1,6 @@
 import {
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -12,8 +13,18 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import type { AssetSelector } from '@harnessvault/domain';
+import { EMBEDDING_DIMENSIONS, type AssetSelector } from '@harnessvault/domain';
 import { organizations, users } from './identity';
+
+/**
+ * pgvector 컬럼. 차원 상수를 도메인 패키지 하나에서만 관리하려고 직접 정의한다.
+ * 값은 `[1,2,3]` 문자열로 주고받는다.
+ */
+export const embedding = customType<{ data: number[]; driverData: string }>({
+  dataType: () => `vector(${EMBEDDING_DIMENSIONS})`,
+  toDriver: (value) => `[${value.join(',')}]`,
+  fromDriver: (value) => JSON.parse(value) as number[],
+});
 
 export const harnessAssetTypeEnum = pgEnum('harness_asset_type', [
   'RULE',
@@ -132,6 +143,9 @@ export const harnessAssets = pgTable(
     // Resolver가 버전 본문을 로드하지 않고 필터링할 수 있도록 자산 단위에 둔다.
     selector: jsonb().$type<AssetSelector>().notNull().default({}),
     reviewAfter: timestamp({ withTimezone: true }),
+
+    // 의미 검색용. 임베딩 제공자가 없으면 null로 남고 어휘 검색으로 떨어진다.
+    embedding: embedding(),
 
     createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,

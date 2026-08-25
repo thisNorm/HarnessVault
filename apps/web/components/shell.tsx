@@ -27,6 +27,7 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
     items: [
       { href: '/resolve', label: 'Resolve', icon: <IconResolve /> },
       { href: '/assets', label: '자산', icon: <IconAsset /> },
+      { href: '/candidates', label: 'Candidates', icon: <IconCandidate /> },
     ],
   },
   {
@@ -224,6 +225,17 @@ function IconResolve() {
   return (
     <svg {...ICON} aria-hidden>
       <path d="M2.5 4h11M4.5 8h7M6.5 12h3" />
+    </svg>
+  );
+}
+
+/** 기여 — 위로 올리는 화살표. 개인 지식이 조직으로 올라간다. */
+function IconCandidate() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4">
+      <path d="M8 13V4" strokeLinecap="round" />
+      <path d="M4.5 7.5 8 4l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 2.5h10" strokeLinecap="round" />
     </svg>
   );
 }

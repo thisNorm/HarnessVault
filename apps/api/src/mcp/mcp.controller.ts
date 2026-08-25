@@ -7,6 +7,8 @@ import {
   completeTaskInputSchema,
   harnessAssetTypeSchema,
   resolveTaskInputSchema,
+  contributeInputSchema,
+  type ContributeInput,
 } from '@harnessvault/domain';
 import { parseBearerToken } from '../identity/session-token';
 import { ApprovalService } from '../approval/approval.service';
@@ -203,7 +205,7 @@ export class McpController {
       {
         title: '유사 자산 탐색',
         description:
-          '새로 만들려는 지식과 비슷한 기존 자산을 찾는다. 중복 기여를 막기 위해 쓴다. Phase 11 전까지는 어휘 기반이다(method: LEXICAL).',
+          '새로 만들려는 지식과 비슷한 기존 자산을 찾는다. 중복 기여를 막기 위해 쓴다. 응답의 method가 VECTOR면 의미 검색, LEXICAL이면 어휘 검색이다.',
         inputSchema: {
           title: z.string().min(1).max(300),
           description: z.string().max(4000).default(''),
@@ -212,6 +214,21 @@ export class McpController {
         },
       },
       async (args) => respond('company.find_similar', () => this.mcp.findSimilar(identity, args)),
+    );
+
+    /* ---------------- Contribution (§Phase 11) ---------------- */
+
+    server.registerTool(
+      'company.contribute',
+      {
+        title: '조직 자산으로 기여',
+        description:
+          '작업 중 알게 된 지식을 조직 Candidate로 제출한다. 바로 자산이 되지 않는다 — 사람이 검토해 승격한다. ' +
+          '중복이어도 거절하지 않고 비슷한 자산을 함께 돌려주니 확인하고 필요하면 취소하라.',
+        inputSchema: contributeInputSchema.shape,
+      },
+      async (args) =>
+        respond('company.contribute', () => this.mcp.contribute(identity, args as ContributeInput)),
     );
 
     /* ---------------- Resource (§26) ---------------- */
