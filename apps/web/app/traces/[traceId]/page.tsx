@@ -172,6 +172,21 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
                   <span className="text-xs text-fg-muted">{item.summary}</span>
                 </Row>
               ) : null}
+              <Row label="산출물 계약">
+                {item.outputContractSatisfied === null ? (
+                  <span className="text-xs text-fg-subtle">—</span>
+                ) : item.outputContractSatisfied ? (
+                  <Badge tone="active">충족</Badge>
+                ) : (
+                  <>
+                    <Badge tone="deny">미충족</Badge>
+                    {/* 빠진 사실을 감추지 않는다. 계약이 장식이 되지 않게 한다. */}
+                    <span className="mt-1 block font-mono text-2xs text-fg-subtle">
+                      {(item.missingOutputFields ?? []).join(', ')}
+                    </span>
+                  </>
+                )}
+              </Row>
             </dl>
           </Card>
 

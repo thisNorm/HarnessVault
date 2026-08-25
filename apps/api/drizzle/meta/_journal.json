@@ -43,6 +43,13 @@
       "when": 1787635725557,
       "tag": "0005_sparkling_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787636715548,
+      "tag": "0006_smiling_wild_child",
+      "breakpoints": true
     }
   ]
 }

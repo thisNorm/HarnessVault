@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import type { ResolveTaskInput, ResolvedHarnessManifest } from '@harnessvault/domain';
 import { and, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
+import { OutputContractService } from '../output-contract/output-contract.service';
 import { TraceService } from '../trace/trace.service';
 import { DatabaseService } from '../db/database.service';
 import {
@@ -24,6 +25,7 @@ export class ResolverService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly traces: TraceService,
+    private readonly outputContracts: OutputContractService,
   ) {}
 
   /**
@@ -35,11 +37,15 @@ export class ResolverService {
     userId: string,
     input: ResolveTaskInput,
   ): Promise<ResolvedHarnessManifest> {
+    // 2단계 — 요청한 프로젝트가 이 조직 것이고 요청자가 속해 있는지 확인한다.
+    // 흐름 생성보다 먼저 한다. 흐름에 프로젝트를 남겨야 종료 시점 산출물 계약이 같은 범위로 해석된다.
+    const projectId = await this.resolveProjectId(organizationId, userId, input.projectId ?? null);
+
     // 흐름의 시작점이다. 이후 툴 호출이 이 traceId로 같은 흐름에 묶인다.
     const trace = await this.traces.start({
       organizationId,
       userId,
-      projectId: null,
+      projectId,
       purpose: input.task.description,
       clientName: input.client?.name ?? null,
       clientVersion: input.client?.version ?? null,
@@ -47,9 +53,6 @@ export class ResolverService {
       clientReportedModel: input.client?.model ?? null,
     });
     const traceId = trace.id;
-
-    // 2단계 — 요청한 프로젝트가 이 조직 것이고 요청자가 속해 있는지 확인한다.
-    const projectId = await this.resolveProjectId(organizationId, userId, input.projectId ?? null);
 
     // 3단계 — 팀 멤버십
     const teamRows = await this.database.db
@@ -120,6 +123,9 @@ export class ResolverService {
             .from(assetRelations)
             .where(inArray(assetRelations.fromAssetId, assetIds));
 
+    // 작업 시작 시점에 "무엇을 남겨야 하는지"를 알아야 그에 맞춰 일한다.
+    const outputContract = await this.outputContracts.resolve(organizationId, userId, projectId);
+
     try {
       const manifest = resolveHarness({
         traceId,
@@ -138,6 +144,7 @@ export class ResolverService {
         },
         candidates,
         relations: relationRows,
+        outputContract,
       });
 
       await this.traces.recordResolution(traceId, {

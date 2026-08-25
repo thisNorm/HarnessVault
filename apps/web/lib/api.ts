@@ -222,7 +222,7 @@ export interface ResolvedManifest {
   scripts: ResolvedRef[];
   templates: ResolvedRef[];
   knowledge: ResolvedRef[];
-  outputContract: null;
+  outputContract: ResolvedOutputContract | null;
   excluded: ExcludedRef[];
   resolution: {
     candidateCount: number;
@@ -325,6 +325,19 @@ export interface ApprovalRequestView {
   failureReason: string | null;
 }
 
+/* ---- Output Contract (Phase 10) ---- */
+
+export interface ResolvedOutputContract {
+  requiredFields: string[];
+  sourceMap: Record<string, { scope: ScopeType; sourceId: string; sourceName: string }>;
+  contributingContracts: Array<{
+    id: string;
+    name: string;
+    scope: ScopeType;
+    fields: string[];
+  }>;
+}
+
 /* ---- Trace (Phase 9) ---- */
 
 export type TraceStatus = 'OPEN' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
@@ -359,6 +372,9 @@ export interface TraceSummary {
   clientReportedInputTokens: number | null;
   clientReportedOutputTokens: number | null;
   eventCount: number;
+  /** 아직 종료하지 않았으면 null이다. */
+  outputContractSatisfied: boolean | null;
+  missingOutputFields: string[] | null;
 }
 
 export interface TraceEventView {

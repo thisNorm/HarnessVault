@@ -299,6 +299,32 @@ describe('결정론', () => {
   });
 });
 
+describe('산출물 계약', () => {
+  it('계약이 있으면 진입 파일에 적는다', () => {
+    const m = manifest({
+      skills: [ref('db.core', 'SKILL')],
+      outputContract: {
+        requiredFields: ['summary', 'changedFiles'],
+        sourceMap: {
+          summary: { scope: 'COMPANY', sourceId: 'c1', sourceName: '회사 기본' },
+          changedFiles: { scope: 'TEAM', sourceId: 't1', sourceName: '백엔드 팀' },
+        },
+        contributingContracts: [],
+      },
+    });
+    const entry = fileAt(build('CODEX', m, { 'ver-db.core': content({ instructions: ['a'] }) }), 'AGENTS.md');
+    expect(entry).toContain('산출물 계약');
+    expect(entry).toContain('summary');
+    expect(entry).toContain('백엔드 팀');
+  });
+
+  it('계약이 없으면 절을 만들지 않는다', () => {
+    const m = manifest({ skills: [ref('db.core', 'SKILL')] });
+    const entry = fileAt(build('CODEX', m, { 'ver-db.core': content({ instructions: ['a'] }) }), 'AGENTS.md');
+    expect(entry).not.toContain('산출물 계약');
+  });
+});
+
 describe('본문 누락', () => {
   it('내용을 못 찾으면 조용히 비우지 않고 그 사실을 적는다', () => {
     const m = manifest({ skills: [ref('missing', 'SKILL')] });

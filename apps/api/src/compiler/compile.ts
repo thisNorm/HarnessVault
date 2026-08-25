@@ -205,6 +205,23 @@ export function compileHarness(input: CompileInput): CompiledHarness {
     );
   }
 
+  // 작업을 마칠 때 무엇을 남겨야 하는지 진입 파일에 적는다(§35).
+  const contract = manifest.outputContract;
+  if (contract && contract.requiredFields.length > 0) {
+    entry.push('## 산출물 계약');
+    entry.push('작업을 마칠 때 아래 항목을 반드시 남긴다.');
+    entry.push(
+      [
+        '| 항목 | 요구한 곳 |',
+        '| --- | --- |',
+        ...contract.requiredFields.map(
+          (field) =>
+            `| \`${field}\` | ${contract.sourceMap[field]?.scope ?? '—'} · ${contract.sourceMap[field]?.sourceName ?? '—'} |`,
+        ),
+      ].join('\n'),
+    );
+  }
+
   if (manifest.excluded.length > 0) {
     entry.push('## 적용되지 않은 자산');
     entry.push(
@@ -231,6 +248,7 @@ export function compileHarness(input: CompileInput): CompiledHarness {
         projectId: manifest.projectId,
         target,
         resolution: manifest.resolution,
+        outputContract: manifest.outputContract,
         selected: placements
           .slice()
           .sort((a, b) => a.ref.key.localeCompare(b.ref.key))

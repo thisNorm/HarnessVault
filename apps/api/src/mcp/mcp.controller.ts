@@ -10,6 +10,7 @@ import {
 } from '@harnessvault/domain';
 import { parseBearerToken } from '../identity/session-token';
 import { ApprovalService } from '../approval/approval.service';
+import { OutputContractService } from '../output-contract/output-contract.service';
 import { TraceService } from '../trace/trace.service';
 import { ResourceService } from '../resource/resource.service';
 import { type McpIdentity, McpService } from './mcp.service';
@@ -47,6 +48,7 @@ export class McpController {
     private readonly resources: ResourceService,
     private readonly approvals: ApprovalService,
     private readonly traces: TraceService,
+    private readonly outputContracts: OutputContractService,
   ) {}
 
   @All()
@@ -472,11 +474,29 @@ export class McpController {
     );
 
     server.registerTool(
+      'company.output_contract',
+      {
+        title: '적용되는 산출물 계약 조회',
+        description:
+          '작업을 마칠 때 무엇을 남겨야 하는지 확인한다. Company·Team·Project 계약이 합쳐진 결과다.',
+        inputSchema: { projectId: z.uuid().optional() },
+      },
+      async (args) =>
+        respond('company.output_contract', () =>
+          this.outputContracts.resolve(
+            identity.organizationId,
+            identity.user.id,
+            args.projectId ?? null,
+          ),
+        ),
+    );
+
+    server.registerTool(
       'company.task.complete',
       {
         title: '작업 흐름 종료',
         description:
-          '작업을 마치며 흐름을 닫는다. 토큰 사용량을 안다면 함께 보낸다 — 모르면 보내지 않는다(0으로 채우지 않는다).',
+          '작업을 마치며 흐름을 닫는다. output에 산출물 계약 항목을 담아 보낸다. 토큰 사용량은 아는 경우에만 보낸다 — 모르면 보내지 않는다(0으로 채우지 않는다).',
         inputSchema: completeTaskInputSchema.shape,
       },
       async (args) =>

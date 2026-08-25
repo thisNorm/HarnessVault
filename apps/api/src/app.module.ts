@@ -7,6 +7,7 @@ import { HarnessModule } from './harness/harness.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
 import { McpModule } from './mcp/mcp.module';
+import { OutputContractModule } from './output-contract/output-contract.module';
 import { PolicyModule } from './policy/policy.module';
 import { ResolverModule } from './resolver/resolver.module';
 import { ResourceModule } from './resource/resource.module';
@@ -23,6 +24,7 @@ import { TraceModule } from './trace/trace.module';
     PolicyModule,
     ApprovalModule,
     ResourceModule,
+    OutputContractModule,
     TraceModule,
     McpModule,
     HealthModule,

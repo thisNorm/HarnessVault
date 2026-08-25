@@ -6,7 +6,9 @@ import type {
   TraceSummary,
 } from '@harnessvault/domain';
 import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
+import { checkOutputAgainstContract } from '@harnessvault/domain';
 import { AuditService } from '../audit/audit.service';
+import { OutputContractService } from '../output-contract/output-contract.service';
 import { DatabaseService } from '../db/database.service';
 import { auditEvents, projects, taskTraces, users } from '../db/schema';
 
@@ -27,6 +29,7 @@ export class TraceService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly outputContracts: OutputContractService,
   ) {}
 
   async start(input: StartTraceInput): Promise<TraceRow> {
@@ -119,12 +122,18 @@ export class TraceService {
       });
     }
 
+    // 산출물 계약과 대조한다. 빠진 항목이 있어도 흐름은 닫되 그 사실을 남긴다.
+    const contract = await this.outputContracts.resolve(organizationId, userId, row.projectId);
+    const outcome = checkOutputAgainstContract(contract, input.output ?? null);
+
     await this.database.db
       .update(taskTraces)
       .set({
         status: input.status,
         summary: input.summary ?? null,
         completedAt: new Date(),
+        outputContractSatisfied: outcome.satisfied,
+        missingOutputFields: outcome.missingFields,
         // 보고하지 않으면 NULL로 남긴다. 0으로 채우면 "안 썼다"는 거짓 진술이다(§40).
         clientReportedInputTokens: input.clientReportedInputTokens ?? null,
         clientReportedOutputTokens: input.clientReportedOutputTokens ?? null,
@@ -143,6 +152,9 @@ export class TraceService {
         // 클라이언트 자가 보고임을 기록에도 남긴다.
         clientReportedInputTokens: input.clientReportedInputTokens ?? null,
         clientReportedOutputTokens: input.clientReportedOutputTokens ?? null,
+        outputContractSatisfied: outcome.satisfied,
+        // 산출물 원문은 남기지 않는다(§39). 빠진 항목 이름만 남긴다.
+        missingOutputFields: outcome.missingFields,
       },
     });
 
@@ -199,6 +211,8 @@ export class TraceService {
       clientReportedInputTokens: row.clientReportedInputTokens,
       clientReportedOutputTokens: row.clientReportedOutputTokens,
       eventCount: eventCount?.value ?? 0,
+      outputContractSatisfied: row.outputContractSatisfied,
+      missingOutputFields: row.missingOutputFields,
     };
   }
 

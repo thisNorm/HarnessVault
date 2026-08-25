@@ -204,7 +204,9 @@ const first = await call('POST', `/organizations/${orgId}/resolve`, baseRequest)
 check('resolve 성공', first.status, 200);
 const manifest = first.body.manifest;
 check('traceId 발급', typeof manifest.traceId, 'string');
-check('outputContract는 아직 null', manifest.outputContract, null);
+// Phase 10부터 계약이 실린다. 계약이 하나도 없으면 빈 배열이지 null이 아니다.
+check('outputContract가 실린다', Array.isArray(manifest.outputContract?.requiredFields), true);
+check('계약이 없으면 빈 배열', manifest.outputContract.requiredFields.length, 0);
 
 const keys = keysOf(manifest);
 console.log(`  선택: ${keys.join(', ')}`);

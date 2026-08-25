@@ -19,6 +19,11 @@ export const completeTaskInputSchema = z.object({
    */
   clientReportedInputTokens: z.number().int().nonnegative().max(100_000_000).optional(),
   clientReportedOutputTokens: z.number().int().nonnegative().max(100_000_000).optional(),
+  /**
+   * 산출물(§35). 계약과 대조해 빠진 항목을 기록한다.
+   * 빠져도 흐름은 닫힌다 — 통과하려고 값을 지어내게 만들지 않기 위해서다.
+   */
+  output: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CompleteTaskInput = z.infer<typeof completeTaskInputSchema>;
@@ -60,6 +65,10 @@ export interface TraceSummary {
   clientReportedOutputTokens: number | null;
 
   eventCount: number;
+
+  /** §35 산출물 계약 충족 여부. 아직 종료하지 않았으면 null이다. */
+  outputContractSatisfied: boolean | null;
+  missingOutputFields: string[] | null;
 }
 
 export interface TraceEventView {

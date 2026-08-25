@@ -8,6 +8,7 @@ import type {
   ResolutionReasonCode,
   ResolvedAssetRef,
   ResolvedHarnessManifest,
+  ResolvedOutputContract,
   ScopeType,
 } from '@harnessvault/domain';
 
@@ -61,6 +62,8 @@ export interface ResolveArgs {
   context: ResolveContext;
   candidates: CandidateAsset[];
   relations: CandidateRelation[];
+  /** 산출물 계약은 자산 해석과 무관하다. 이미 병합된 값을 받아 그대로 싣는다. */
+  outputContract?: ResolvedOutputContract | null;
 }
 
 export class ResolutionConflictError extends Error {
@@ -507,7 +510,7 @@ export function resolveHarness(args: ResolveArgs): ResolvedHarnessManifest {
     templates: pick('TEMPLATE'),
     knowledge: pick('KNOWLEDGE'),
 
-    outputContract: null,
+    outputContract: args.outputContract ?? null,
 
     excluded,
     resolution: {

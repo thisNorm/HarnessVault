@@ -322,7 +322,14 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
                 : `${resolution.estimatedAvailableTokens}`
             }
           />
-          <Stat label="Output Contract" value="Phase 10" hint="아직 결정 로직이 없습니다" />
+          <Stat
+            label="Output Contract"
+            value={
+              manifest.outputContract === null
+                ? '해석 실패'
+                : `${manifest.outputContract.requiredFields.length}개 항목`
+            }
+          />
           <Stat
             label="예산 초과"
             value={resolution.budgetExceededByMandatory ? '필수 자산으로 초과' : '없음'}
@@ -330,6 +337,31 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
           />
         </dl>
       </Card>
+
+      {manifest.outputContract && manifest.outputContract.requiredFields.length > 0 ? (
+        <Card>
+          <CardHeader
+            title="산출물 계약"
+            description="작업을 마칠 때 아래 항목을 남겨야 합니다"
+          />
+          <div className="flex flex-wrap gap-1.5 px-4 py-3">
+            {manifest.outputContract.requiredFields.map((field) => {
+              const source = manifest.outputContract?.sourceMap[field];
+              return (
+                <span
+                  key={field}
+                  className="rounded-sm border border-border bg-bg-raised px-2 py-1 font-mono text-xs text-fg-muted"
+                  title={source ? `${source.scope} · ${source.sourceName}` : undefined}
+                >
+                  {field}
+                  {/* 왜 필요한지 알 수 있어야 한다(§36 sourceMap). */}
+                  <span className="ml-1.5 text-2xs text-fg-subtle">{source?.scope ?? '—'}</span>
+                </span>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader title="선택된 자산" description={`${selected.length}개 · 주입 순서대로`} />

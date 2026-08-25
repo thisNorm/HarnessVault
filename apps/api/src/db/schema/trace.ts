@@ -1,4 +1,4 @@
-import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { organizations, projects, users } from './identity';
 
 export const traceStatusEnum = pgEnum('trace_status', [
@@ -55,6 +55,10 @@ export const taskTraces = pgTable(
     // 외부 AI가 보고하지 않으면 NULL이다. 0으로 바꾸지 않는다.
     clientReportedInputTokens: integer(),
     clientReportedOutputTokens: integer(),
+
+    // §35 산출물 계약. 못 채운 항목이 있어도 흐름은 닫되 그 사실을 남긴다.
+    outputContractSatisfied: boolean(),
+    missingOutputFields: jsonb().$type<string[]>(),
 
     startedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp({ withTimezone: true }),

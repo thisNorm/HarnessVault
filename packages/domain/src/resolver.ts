@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { HarnessAssetType, InheritanceMode, ScopeType } from './harness';
+import type { ResolvedOutputContract } from './output-contract';
 
 export const resolveTaskInputSchema = z.object({
   projectId: z.uuid().nullish(),
@@ -97,8 +98,11 @@ export interface ResolvedHarnessManifest {
   templates: ResolvedAssetRef[];
   knowledge: ResolvedAssetRef[];
 
-  /** Phase 10에서 채운다. 빈 객체는 "요구 산출물 없음"이라는 거짓 진술이 되므로 null이다. */
-  outputContract: null;
+  /**
+   * 적용되는 산출물 계약(§36). 계약이 하나도 없으면 `requiredFields: []`다.
+   * 해석하지 못한 경우에만 null이다 — 빈 계약과 "모른다"를 구분한다.
+   */
+  outputContract: ResolvedOutputContract | null;
 
   excluded: ExcludedAssetRef[];
   resolution: ResolutionStats;
