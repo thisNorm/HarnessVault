@@ -8,6 +8,7 @@ import {
   resolveTaskInputSchema,
 } from '@harnessvault/domain';
 import { parseBearerToken } from '../identity/session-token';
+import { ResourceService } from '../resource/resource.service';
 import { type McpIdentity, McpService } from './mcp.service';
 
 /** 도메인은 MCP SDK에 의존하지 않는다(§24). 이 파일이 유일한 접점이다. */
@@ -15,7 +16,10 @@ import { type McpIdentity, McpService } from './mcp.service';
 export class McpController {
   private readonly logger = new Logger(McpController.name);
 
-  constructor(private readonly mcp: McpService) {}
+  constructor(
+    private readonly mcp: McpService,
+    private readonly resources: ResourceService,
+  ) {}
 
   @All()
   async handle(@Req() request: Request, @Res() response: Response): Promise<void> {
@@ -151,6 +155,123 @@ export class McpController {
         },
       },
       async (args) => respond('company.find_similar', () => this.mcp.findSimilar(identity, args)),
+    );
+
+    /* ---------------- Resource (§26) ---------------- */
+
+    // `purpose`는 전부 필수다. 왜 조회했는지가 남지 않으면 감사가 반쪽이 된다.
+    const purpose = z.string().min(1).max(500).describe('이 조회가 필요한 이유');
+
+    server.registerTool(
+      'company.resources',
+      {
+        title: '접근 가능한 회사 Resource 목록',
+        description: '어떤 Resource가 있는지 먼저 확인한다. credential 값은 절대 반환되지 않는다.',
+        inputSchema: { type: z.enum(['FILE_SYSTEM', 'DATABASE', 'GIT', 'INTERNAL_API']).optional() },
+      },
+      async (args) =>
+        respond('company.resources', async () => ({
+          resources: await this.resources.list(identity.organizationId, args.type),
+        })),
+    );
+
+    server.registerTool(
+      'company.files.search',
+      {
+        title: '회사 파일 검색',
+        description: '등록된 파일 Resource 안에서 이름·내용을 검색한다. 지정된 root 밖은 볼 수 없다.',
+        inputSchema: {
+          resourceId: z.uuid(),
+          query: z.string().min(1).max(500),
+          limit: z.number().int().positive().max(100).optional(),
+          purpose,
+        },
+      },
+      async (args) =>
+        respond('company.files.search', () =>
+          this.resources.filesSearch(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    server.registerTool(
+      'company.files.read',
+      {
+        title: '회사 파일 읽기',
+        description: 'root 기준 상대 경로로 파일을 읽는다. range로 줄 범위를 제한할 수 있다.',
+        inputSchema: {
+          resourceId: z.uuid(),
+          path: z.string().min(1).max(1000),
+          range: z
+            .object({
+              start: z.number().int().positive().optional(),
+              end: z.number().int().positive().optional(),
+            })
+            .optional(),
+          purpose,
+        },
+      },
+      async (args) =>
+        respond('company.files.read', () =>
+          this.resources.filesRead(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    server.registerTool(
+      'company.db.schema',
+      {
+        title: '회사 DB 스키마 조회',
+        description: '테이블과 컬럼 목록을 돌려준다. object를 주면 그 테이블만 본다.',
+        inputSchema: { resourceId: z.uuid(), object: z.string().max(200).optional(), purpose },
+      },
+      async (args) =>
+        respond('company.db.schema', () =>
+          this.resources.dbSchema(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    server.registerTool(
+      'company.db.query',
+      {
+        title: '회사 DB 조회',
+        description:
+          'SELECT 질의만 실행한다. read only 트랜잭션으로 DB가 강제한다. 쓰기는 Policy·Approval이 붙는 이후 Phase에서 열린다.',
+        inputSchema: { resourceId: z.uuid(), query: z.string().min(1).max(10_000), purpose },
+      },
+      async (args) =>
+        respond('company.db.query', () =>
+          this.resources.dbQuery(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    server.registerTool(
+      'company.git.status',
+      {
+        title: '회사 Git 상태',
+        description: '브랜치·HEAD·변경 파일 목록을 돌려준다.',
+        inputSchema: { resourceId: z.uuid(), purpose },
+      },
+      async (args) =>
+        respond('company.git.status', () =>
+          this.resources.gitStatus(identity.organizationId, identity.user.id, args),
+        ),
+    );
+
+    server.registerTool(
+      'company.git.read',
+      {
+        title: '회사 Git 파일 읽기',
+        description: '특정 ref의 파일 내용을 읽는다. 기본 ref는 HEAD다.',
+        inputSchema: {
+          resourceId: z.uuid(),
+          path: z.string().min(1).max(1000),
+          ref: z.string().max(200).optional(),
+          purpose,
+        },
+      },
+      async (args) =>
+        respond('company.git.read', () =>
+          this.resources.gitRead(identity.organizationId, identity.user.id, args),
+        ),
     );
 
     return server;

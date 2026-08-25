@@ -26,7 +26,8 @@
     "test:e2e": "npm run test:e2e -w @harnessvault/api",
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "scan:secrets": "node scripts/scan-secrets.mjs --all",
-    "db:seed": "npm run db:seed -w @harnessvault/api"
+    "db:seed": "npm run db:seed -w @harnessvault/api",
+    "setup:resources": "npm run setup:resources -w @harnessvault/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

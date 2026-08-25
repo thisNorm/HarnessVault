@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
 import { McpModule } from './mcp/mcp.module';
 import { ResolverModule } from './resolver/resolver.module';
+import { ResourceModule } from './resource/resource.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ResolverModule } from './resolver/resolver.module';
     HarnessModule,
     ResolverModule,
     CompilerModule,
+    ResourceModule,
     McpModule,
     HealthModule,
   ],

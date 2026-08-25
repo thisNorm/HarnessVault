@@ -10,8 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test:e2e": "node test/identity-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs && node test/mcp-e2e.mjs",
-    "db:seed": "node test/seed.mjs"
+    "test:e2e": "node test/identity-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs && node test/mcp-e2e.mjs && node test/resource-e2e.mjs",
+    "db:seed": "node test/seed.mjs",
+    "setup:resources": "node test/setup-resources.mjs"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",

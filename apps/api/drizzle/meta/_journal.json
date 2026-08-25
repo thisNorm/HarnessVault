@@ -15,6 +15,13 @@
       "when": 1787618513636,
       "tag": "0001_gifted_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787623497809,
+      "tag": "0002_moaning_amazoness",
+      "breakpoints": true
     }
   ]
 }
