@@ -66,6 +66,30 @@ API가 떠 있는 상태에서 Identity 전 구간을 확인한다.
 npm run test:e2e
 ```
 
+## Resource 연결 (Phase 6)
+
+회사 파일·DB·Git을 등록하면 에이전트가 `company.*` MCP 툴로 **raw credential 없이** 읽는다.
+
+접속 문자열은 DB에 저장하지 않는다. `resources.credential_ref`에는 **환경변수 이름**만 담고
+실제 값은 실행 시점에 `.env`에서 읽는다.
+
+```bash
+# .env
+HARNESS_RESOURCE_DEMO_DB=postgresql://user:pw@host:5432/db
+```
+
+이름은 반드시 `HARNESS_RESOURCE_`로 시작해야 한다. 이 제약이 없으면 조직 관리자가
+`DATABASE_URL`을 지정해 이 애플리케이션 자신의 DB를 열 수 있다.
+
+검증용 준비물을 만든다.
+
+```bash
+npm run setup:resources
+```
+
+Phase 6은 **읽기 전용**이다. `company.db.query`는 SELECT만 실행하며
+`read only` 트랜잭션으로 DB가 강제한다. 쓰기는 Policy(Phase 7)·Approval(Phase 8)이 붙은 뒤 열린다.
+
 ## MCP로 연결하기
 
 에이전트(Codex · Claude Code)를 붙일 때 쓴다. 세션 토큰은 로그인 응답의
