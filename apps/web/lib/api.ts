@@ -249,3 +249,29 @@ export interface CompiledHarness {
     manifestTraceId: string;
   };
 }
+
+/* ---- Resource · Policy (Phase 6~7) ---- */
+
+export interface ResourceSummary {
+  id: string;
+  type: 'FILE_SYSTEM' | 'DATABASE' | 'GIT' | 'INTERNAL_API';
+  name: string;
+  description: string;
+  classification: 'PUBLIC' | 'INTERNAL' | 'RESTRICTED' | 'HIGHLY_RESTRICTED';
+  adapterType: string;
+  enabled: boolean;
+  /** 환경변수 **이름**이다. 값은 서버가 절대 내보내지 않는다. */
+  credentialRef: string | null;
+  credentialConfigured: boolean;
+}
+
+export interface Policy {
+  id: string;
+  name: string;
+  description: string;
+  effect: 'ALLOW' | 'APPROVAL_REQUIRED' | 'DENY';
+  scopeType: ScopeType;
+  inheritanceMode: InheritanceMode;
+  actions: string[];
+  enabled: boolean;
+}

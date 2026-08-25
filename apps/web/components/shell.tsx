@@ -31,6 +31,13 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
       { href: '/admin/groups', label: '그룹', icon: <IconGroup /> },
     ],
   },
+  {
+    label: 'Governance',
+    items: [
+      { href: '/admin/resources', label: 'Resources', icon: <IconResource /> },
+      { href: '/admin/policies', label: 'Policies', icon: <IconPolicy /> },
+    ],
+  },
 ];
 
 export function ConsoleShell({ children }: { children: ReactNode }) {
@@ -170,6 +177,24 @@ const ICON = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
+
+function IconResource() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <ellipse cx="8" cy="4" rx="5.5" ry="2" />
+      <path d="M2.5 4v8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2" />
+    </svg>
+  );
+}
+
+function IconPolicy() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <path d="M8 1.8 13.5 4v4.2c0 3-2.3 5.2-5.5 6-3.2-.8-5.5-3-5.5-6V4z" />
+      <path d="M6 8l1.5 1.5L10.5 6.5" />
+    </svg>
+  );
+}
 
 function IconResolve() {
   return (
