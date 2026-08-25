@@ -16,6 +16,10 @@ import { Badge, ErrorState, LoadingState, Select } from './ui';
  */
 const NAV: { label: string; items: { href: string; label: string; icon: ReactNode }[] }[] = [
   {
+    label: 'Governance',
+    items: [{ href: '/approvals', label: '승인함', icon: <IconApproval /> }],
+  },
+  {
     label: 'Harness',
     items: [
       { href: '/resolve', label: 'Resolve', icon: <IconResolve /> },
@@ -32,7 +36,7 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
     ],
   },
   {
-    label: 'Governance',
+    label: '정책 · 자원',
     items: [
       { href: '/admin/resources', label: 'Resources', icon: <IconResource /> },
       { href: '/admin/policies', label: 'Policies', icon: <IconPolicy /> },
@@ -177,6 +181,15 @@ const ICON = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
+
+function IconApproval() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <path d="M3.5 2.5h9v11l-4.5-2.5-4.5 2.5z" />
+      <path d="M6 6.5l1.5 1.5L10 5.5" />
+    </svg>
+  );
+}
 
 function IconResource() {
   return (

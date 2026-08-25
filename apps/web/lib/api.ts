@@ -275,3 +275,52 @@ export interface Policy {
   actions: string[];
   enabled: boolean;
 }
+
+/* ---- Approval (Phase 8) ---- */
+
+export type ApprovalStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+  | 'EXECUTING'
+  | 'EXECUTED'
+  | 'FAILED';
+
+export interface ApprovalRequestView {
+  id: string;
+  status: ApprovalStatus;
+  requester: { userId: string; displayName: string; email: string };
+  /** 클라이언트 자가 보고 값이다. 서버가 검증하지 않는다(§59). */
+  clientName: string | null;
+  clientReportedModel: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  resourceId: string;
+  resourceName: string;
+  resourceClassification: string;
+  action: string;
+  proposedChange: string;
+  reason: string;
+  risk: string | null;
+  rollbackPlan: string | null;
+  verificationPlan: string | null;
+  policyIds: string[];
+  approvalPolicyId: string | null;
+  approvalPolicyName: string | null;
+  mode: 'ANY_OF' | 'ALL_OF' | 'N_OF_M' | null;
+  requiredCount: number | null;
+  decisions: Array<{
+    userId: string;
+    displayName: string;
+    decision: 'APPROVE' | 'REJECT';
+    comment: string;
+    decidedAt: string;
+  }>;
+  canDecide: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  executedAt: string | null;
+  failureReason: string | null;
+}

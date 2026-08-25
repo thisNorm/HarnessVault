@@ -10,7 +10,7 @@ export default function IndexPage() {
 
   useEffect(() => {
     api<Me>('/auth/me').then(
-      () => router.replace('/admin/organization'),
+      () => router.replace('/approvals'),
       () => router.replace('/login'),
     );
   }, [router]);
