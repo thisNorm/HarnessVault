@@ -195,17 +195,16 @@ check('GET은 405', getRes.status, 405);
 console.log('\n── tools/list ──');
 const listed = await rpc('tools/list', {}, { token: adminToken, orgId });
 const toolNames = listed.body.result.tools.map((t) => t.name).sort();
-check('툴 4개', toolNames.length, 4);
-check(
-  '명세 §25 이름 그대로',
-  JSON.stringify(toolNames),
-  JSON.stringify([
-    'company.find_similar',
-    'company.get_asset',
-    'company.resolve_task',
-    'company.search_asset',
-  ]),
-);
+// Harness 툴 4종 + Resource 툴 7종(Phase 6). 개수를 박아 두면 Phase마다 깨진다.
+for (const expected of [
+  'company.resolve_task',
+  'company.search_asset',
+  'company.get_asset',
+  'company.find_similar',
+]) {
+  check(`${expected} 등록됨`, toolNames.includes(expected), true);
+}
+check('Resource 툴도 함께 노출', toolNames.includes('company.files.read'), true);
 check(
   'contribute는 아직 없음',
   toolNames.includes('company.contribute'),
