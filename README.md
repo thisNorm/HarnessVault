@@ -58,6 +58,17 @@ API가 떠 있는 상태에서 Identity 전 구간을 확인한다.
 npm run test:e2e
 ```
 
+## 시크릿 스캔
+
+`npm install`이 `core.hooksPath`를 `.githooks`로 설정하므로 커밋 시 자격증명 검사가 자동 실행된다.
+`.env` 계열 파일과 API 키·토큰·개인키 리터럴은 커밋되지 않는다.
+
+```bash
+npm run scan:secrets
+```
+
+오탐이면 해당 줄 끝에 `secret-scan:allow` 주석을 남긴다.
+
 ## 에이전트로 작업할 때
 
 `AGENTS.md`를 먼저 읽는다.

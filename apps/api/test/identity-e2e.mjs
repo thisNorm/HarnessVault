@@ -1,4 +1,6 @@
 // Phase 1 완료 조건 검증: 가입 → 조직 생성 → 팀/프로젝트/그룹에 사용자 배치
+import { randomBytes } from 'node:crypto';
+
 const BASE = 'http://localhost:3000';
 
 let cookie = '';
@@ -30,9 +32,11 @@ function check(label, actual, expected) {
 }
 
 const stamp = Date.now();
-const admin = { email: `admin-${stamp}@example.com`, password: 'harness-vault-2026', displayName: '관리자 김수형' };
-const member = { email: `member-${stamp}@example.com`, password: 'harness-vault-2026', displayName: '팀원 이하늘' };
-const outsider = { email: `out-${stamp}@example.com`, password: 'harness-vault-2026', displayName: '외부인 박' };
+// 리터럴을 두지 않는다. 저장소에 남는 비밀번호는 그 자체로 나쁜 선례다.
+const secret = randomBytes(18).toString('base64url');
+const admin = { email: `admin-${stamp}@example.com`, password: secret, displayName: '관리자 김수형' };
+const member = { email: `member-${stamp}@example.com`, password: secret, displayName: '팀원 이하늘' };
+const outsider = { email: `out-${stamp}@example.com`, password: secret, displayName: '외부인 박' };
 
 console.log('\n── 가입 ──');
 check('관리자 가입', (await call('POST', '/auth/register', admin)).status, 201);
