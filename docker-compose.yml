@@ -1,18 +1,25 @@
+# 로컬 개발 전용. 운영에 이 파일을 그대로 쓰지 않는다.
+# 자격증명은 .env로 덮어쓸 수 있고, 기본값은 localhost 개발 편의를 위한 것이다.
 services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: harnessvault-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: harness
-      POSTGRES_PASSWORD: harness
-      POSTGRES_DB: harnessvault
+      POSTGRES_USER: ${POSTGRES_USER:-harness}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harness}
+      POSTGRES_DB: ${POSTGRES_DB:-harnessvault}
     ports:
-      - '5432:5432'
+      # 호스트 루프백에만 바인딩한다. 외부 네트워크에 DB를 노출하지 않는다.
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U harness -d harnessvault']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-harness} -d ${POSTGRES_DB:-harnessvault}',
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
