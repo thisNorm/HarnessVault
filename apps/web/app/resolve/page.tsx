@@ -2,7 +2,15 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ApiError, api, post, type Project, type ResolvedManifest } from '@/lib/api';
+import {
+  ApiError,
+  api,
+  post,
+  type CompileTarget,
+  type CompiledHarness,
+  type Project,
+  type ResolvedManifest,
+} from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { useOrgId } from '@/components/session';
 import {
@@ -32,9 +40,12 @@ export default function ResolvePage() {
   );
 
   const [manifest, setManifest] = useState<ResolvedManifest | null>(null);
+  const [compiled, setCompiled] = useState<CompiledHarness | null>(null);
   const [conflicts, setConflicts] = useState<Conflict[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
+  const [target, setTarget] = useState<CompileTarget>('CODEX');
+  const [view, setView] = useState<'manifest' | 'files'>('manifest');
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,9 +62,11 @@ export default function ResolvePage() {
     setError(null);
     setConflicts(null);
     try {
-      const result = await post<{ manifest: ResolvedManifest }>(
-        `/organizations/${orgId}/resolve`,
+      // 해석과 컴파일을 한 번에 받는다. 콘솔은 에이전트를 실행하지 않는다 — 파일만 미리 보여준다.
+      const result = await post<{ manifest: ResolvedManifest; compiled: CompiledHarness }>(
+        `/organizations/${orgId}/compile`,
         {
+          target,
           projectId: text('projectId'),
           task: {
             description: String(form.get('description') ?? ''),
@@ -70,9 +83,11 @@ export default function ResolvePage() {
         },
       );
       setManifest(result.manifest);
+      setCompiled(result.compiled);
     } catch (err: unknown) {
       const apiError = err instanceof ApiError ? err : new ApiError(0, String(err));
       setManifest(null);
+      setCompiled(null);
       // 충돌은 실패다. 임의로 한 버전을 고르지 않았다는 사실을 그대로 보여준다.
       if (apiError.statusCode === 409 && Array.isArray(apiError.details?.conflicts)) {
         setConflicts(apiError.details.conflicts as Conflict[]);
@@ -131,6 +146,12 @@ export default function ResolvePage() {
             <Field label="Context budget (추정 토큰)">
               <Input name="contextBudget" type="number" min={1} placeholder="비우면 제한 없음" />
             </Field>
+            <Field label="컴파일 타깃">
+              <Select value={target} onChange={(e) => setTarget(e.target.value as CompileTarget)}>
+                <option value="CODEX">Codex (AGENTS.md)</option>
+                <option value="CLAUDE_CODE">Claude Code (CLAUDE.md)</option>
+              </Select>
+            </Field>
             <Button type="submit" variant="primary" disabled={pending} className="mt-1">
               {pending ? '해석 중…' : 'Resolve'}
             </Button>
@@ -157,10 +178,80 @@ export default function ResolvePage() {
               />
             </Card>
           ) : null}
-          {manifest ? <ManifestView manifest={manifest} /> : null}
+          {manifest ? (
+            <>
+              <div className="flex gap-1.5">
+                <TabButton active={view === 'manifest'} onClick={() => setView('manifest')}>
+                  Manifest
+                </TabButton>
+                <TabButton active={view === 'files'} onClick={() => setView('files')}>
+                  생성 파일 {compiled ? `(${compiled.files.length})` : ''}
+                </TabButton>
+              </div>
+              {view === 'manifest' ? (
+                <ManifestView manifest={manifest} />
+              ) : compiled ? (
+                <CompiledView compiled={compiled} />
+              ) : null}
+            </>
+          ) : null}
         </div>
       </div>
     </>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-sm border px-3 py-1.5 text-sm transition-colors ${
+        active
+          ? 'border-accent/40 bg-accent-soft text-fg'
+          : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 초안 UI의 `Agent에 적용 (Dry Run)`을 대신한다. 콘솔은 에이전트를 실행하지 않는다(§59). */
+function CompiledView({ compiled }: { compiled: CompiledHarness }) {
+  return (
+    <Card>
+      <CardHeader
+        title={`${compiled.metadata.target} 타깃 파일`}
+        description="이 파일들이 에이전트 작업 디렉터리에 놓입니다. 콘솔은 실행하지 않습니다."
+      />
+      <ul className="divide-y divide-border">
+        {compiled.files.map((file) => (
+          <li key={file.path}>
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 hover:bg-surface-hover">
+                <span className="min-w-0 truncate font-mono text-sm text-fg">{file.path}</span>
+                <span className="shrink-0 font-mono text-2xs text-fg-subtle">
+                  {file.content.length}자
+                </span>
+              </summary>
+              <pre className="overflow-x-auto border-t border-border bg-bg-raised px-4 py-3 font-mono text-xs whitespace-pre text-fg-muted">
+                {file.content}
+              </pre>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 

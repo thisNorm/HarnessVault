@@ -233,3 +233,19 @@ export interface ResolvedManifest {
     budgetExceededByMandatory: boolean;
   };
 }
+
+export type CompileTarget = 'CODEX' | 'CLAUDE_CODE';
+
+export interface CompiledFile {
+  path: string;
+  content: string;
+}
+
+export interface CompiledHarness {
+  files: CompiledFile[];
+  metadata: {
+    target: CompileTarget;
+    generatedAt: string;
+    manifestTraceId: string;
+  };
+}
