@@ -17,7 +17,10 @@ import { Badge, ErrorState, LoadingState, Select } from './ui';
 const NAV: { label: string; items: { href: string; label: string; icon: ReactNode }[] }[] = [
   {
     label: 'Harness',
-    items: [{ href: '/assets', label: '자산', icon: <IconAsset /> }],
+    items: [
+      { href: '/resolve', label: 'Resolve', icon: <IconResolve /> },
+      { href: '/assets', label: '자산', icon: <IconAsset /> },
+    ],
   },
   {
     label: '조직 관리',
@@ -167,6 +170,14 @@ const ICON = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
+
+function IconResolve() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <path d="M2.5 4h11M4.5 8h7M6.5 12h3" />
+    </svg>
+  );
+}
 
 function IconAsset() {
   return (

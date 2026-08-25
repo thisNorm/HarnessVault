@@ -43,6 +43,7 @@ const registered = await call('POST', '/auth/register', {
 }, [409]);
 if (registered === null) console.log(`기존 계정으로 진행합니다: ${email}`);
 await call('POST', '/auth/login', { email, password });
+const { user } = await call('GET', '/auth/me');
 
 const { organization } = await call('POST', '/organizations', {
   name: 'Acme Corporation',
@@ -62,6 +63,15 @@ const { project } = await call('POST', `/organizations/${orgId}/projects`, {
   name: 'Edge Server',
   slug: 'edge-server',
   teamId: team.id,
+});
+
+// 생성자를 팀·프로젝트에 배치한다. 넣지 않으면 Resolver가 TEAM·PROJECT 스코프를 쓸 수 없다.
+for (const id of [team.id, dba.id]) {
+  await call('POST', `/organizations/${orgId}/teams/${id}/members`, { userId: user.id });
+}
+await call('POST', `/organizations/${orgId}/projects/${project.id}/members`, {
+  userId: user.id,
+  role: 'PROJECT_OWNER',
 });
 await call('POST', `/organizations/${orgId}/groups`, { name: 'Security Team', slug: 'security' });
 

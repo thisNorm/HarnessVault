@@ -14,11 +14,14 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000
 
 export class ApiError extends Error {
   readonly statusCode: number;
+  /** 서버가 함께 준 구조화 정보. RESOLUTION_CONFLICT의 conflicts 같은 것이 들어온다. */
+  readonly details: Record<string, unknown> | null;
 
-  constructor(statusCode: number, message: string) {
+  constructor(statusCode: number, message: string, details: Record<string, unknown> | null = null) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
+    this.details = details;
   }
 }
 
@@ -56,7 +59,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const body: unknown = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
-    throw new ApiError(res.status, readErrorMessage(body, `${res.status} ${res.statusText}`));
+    throw new ApiError(
+      res.status,
+      readErrorMessage(body, `${res.status} ${res.statusText}`),
+      body && typeof body === 'object' ? (body as Record<string, unknown>) : null,
+    );
   }
   return body as T;
 }
@@ -164,4 +171,65 @@ export interface AssetDetail {
   versions: AssetVersionRow[];
   relations: { outgoing: RelatedAsset[]; incoming: RelatedAsset[] };
   activeVersionCount: number;
+}
+
+
+/* ---- Resolver ---- */
+
+export interface Project {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface ResolvedRef {
+  assetId: string;
+  versionId: string;
+  key: string;
+  name: string;
+  type: HarnessAssetType;
+  version: string;
+  scope: ScopeType;
+  inheritanceMode: InheritanceMode;
+  reasonCode: string;
+  reason: string;
+  mandatory: boolean;
+  /** 추정치다. 화면에서는 `~`를 붙여 실측과 구분한다. */
+  estimatedTokens: number;
+}
+
+export interface ExcludedRef {
+  assetId: string;
+  key: string;
+  name: string;
+  type: HarnessAssetType;
+  scope: ScopeType;
+  reasonCode: string;
+  reason: string;
+}
+
+export interface ResolvedManifest {
+  traceId: string;
+  organizationId: string;
+  userId: string;
+  projectId: string | null;
+  rules: ResolvedRef[];
+  policies: ResolvedRef[];
+  validations: ResolvedRef[];
+  workflows: ResolvedRef[];
+  skills: ResolvedRef[];
+  variants: ResolvedRef[];
+  scripts: ResolvedRef[];
+  templates: ResolvedRef[];
+  knowledge: ResolvedRef[];
+  outputContract: null;
+  excluded: ExcludedRef[];
+  resolution: {
+    candidateCount: number;
+    selectedCount: number;
+    excludedCount: number;
+    estimatedAvailableTokens: number | null;
+    estimatedInjectedTokens: number;
+    budgetExceededByMandatory: boolean;
+  };
 }
