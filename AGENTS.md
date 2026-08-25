@@ -90,6 +90,6 @@ Phase 또는 작업 단위를 마치면 다음을 보고한다.
 
 ## 현재 Phase
 
-**Phase 8 — Approval Engine**
+**Phase 9 — Audit / Telemetry**
 
 상세 설계는 `docs/`를 참조한다(로컬 전용).
