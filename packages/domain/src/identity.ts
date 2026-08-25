@@ -22,14 +22,31 @@ export const slugSchema = z
 export const emailSchema = z.email().max(254).toLowerCase();
 export const displayNameSchema = z.string().trim().min(1).max(100);
 
-/** 길이만 강제한다. 문자 구성 규칙은 오히려 엔트로피를 낮추는 경우가 많다. */
-export const passwordSchema = z.string().min(12).max(200);
+/**
+ * 길이만 강제한다. 문자 구성 규칙은 오히려 엔트로피를 낮추는 경우가 많다.
+ *
+ * 최소 길이는 환경에 따라 다르다. 개발 중에는 `test@test.com` / `1234` 같은 계정으로
+ * 바로 확인할 수 있어야 하고, 운영에서는 그런 계정이 만들어지면 안 된다.
+ * api가 NODE_ENV로 실제 값을 정한다.
+ */
+export const PRODUCTION_MIN_PASSWORD_LENGTH = 12;
+export const DEVELOPMENT_MIN_PASSWORD_LENGTH = 4;
 
-export const registerInputSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-  displayName: displayNameSchema,
-});
+export function makePasswordSchema(minLength: number) {
+  return z.string().min(minLength).max(200);
+}
+
+export const passwordSchema = makePasswordSchema(PRODUCTION_MIN_PASSWORD_LENGTH);
+
+export function makeRegisterInputSchema(minPasswordLength: number) {
+  return z.object({
+    email: emailSchema,
+    password: makePasswordSchema(minPasswordLength),
+    displayName: displayNameSchema,
+  });
+}
+
+export const registerInputSchema = makeRegisterInputSchema(PRODUCTION_MIN_PASSWORD_LENGTH);
 
 export const loginInputSchema = z.object({
   email: emailSchema,

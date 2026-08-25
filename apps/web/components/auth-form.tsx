@@ -89,7 +89,6 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
                 name="password"
                 type="password"
                 required
-                minLength={8}
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 placeholder="********"
               />

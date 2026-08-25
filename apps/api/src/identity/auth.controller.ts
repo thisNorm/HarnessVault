@@ -8,10 +8,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  DEVELOPMENT_MIN_PASSWORD_LENGTH,
+  PRODUCTION_MIN_PASSWORD_LENGTH,
   type LoginInput,
-  type RegisterInput,
   loginInputSchema,
-  registerInputSchema,
+  makeRegisterInputSchema,
 } from '@harnessvault/domain';
 import type { CookieOptions, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -20,6 +21,18 @@ import { AuthService } from './auth.service';
 import { CurrentAuth } from './current-user.decorator';
 import { SESSION_COOKIE_NAME } from './session-token';
 import { type RequestAuth, SessionGuard } from './session.guard';
+
+/**
+ * 개발 중에는 `test@test.com` / `1234` 같은 계정으로 바로 확인할 수 있게 완화한다.
+ * 운영에서는 완화되지 않는다 — 이 분기가 유일한 차이다.
+ */
+const registerSchema = makeRegisterInputSchema(
+  getEnv().NODE_ENV === 'production'
+    ? PRODUCTION_MIN_PASSWORD_LENGTH
+    : DEVELOPMENT_MIN_PASSWORD_LENGTH,
+);
+
+type RegisterBody = ReturnType<typeof registerSchema.parse>;
 
 function sessionCookieOptions(expires?: Date): CookieOptions {
   return {
@@ -36,7 +49,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  async register(@Body(new ZodValidationPipe(registerInputSchema)) input: RegisterInput) {
+  async register(@Body(new ZodValidationPipe(registerSchema)) input: RegisterBody) {
     return { user: await this.auth.register(input) };
   }
 
