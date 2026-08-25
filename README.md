@@ -66,6 +66,30 @@ API가 떠 있는 상태에서 Identity 전 구간을 확인한다.
 npm run test:e2e
 ```
 
+## MCP로 연결하기
+
+에이전트(Codex · Claude Code)를 붙일 때 쓴다. 세션 토큰은 로그인 응답의
+`harness_session` 쿠키 값이다.
+
+```jsonc
+{
+  "mcpServers": {
+    "company": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer <session token>",
+        "X-Harness-Organization": "<organizationId>"
+      }
+    }
+  }
+}
+```
+
+조직에 하나만 속해 있으면 `X-Harness-Organization`을 생략할 수 있다.
+여러 조직에 속해 있으면 반드시 지정해야 한다 — 어느 조직 Harness를 받았는지
+모른 채 일하게 두지 않기 위해서다.
+
 ## 시크릿 스캔
 
 `npm install`이 `core.hooksPath`를 `.githooks`로 설정하므로 커밋 시 자격증명 검사가 자동 실행된다.
