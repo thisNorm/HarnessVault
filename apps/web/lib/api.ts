@@ -324,3 +324,74 @@ export interface ApprovalRequestView {
   executedAt: string | null;
   failureReason: string | null;
 }
+
+/* ---- Trace (Phase 9) ---- */
+
+export type TraceStatus = 'OPEN' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type ModelSource = 'VERIFIED' | 'CLIENT_REPORTED' | 'UNKNOWN';
+
+export interface TraceSummary {
+  id: string;
+  userId: string;
+  userDisplayName: string;
+  projectId: string | null;
+  projectName: string | null;
+  clientName: string | null;
+  clientVersion: string | null;
+  modelName: string | null;
+  /** 자가 보고를 검증된 값처럼 보여주지 않기 위해 함께 받는다. */
+  modelSource: ModelSource;
+  purpose: string;
+  status: TraceStatus;
+  startedAt: string;
+  completedAt: string | null;
+  summary: string | null;
+  candidateAssetCount: number | null;
+  selectedAssetCount: number | null;
+  estimatedAvailableTokens: number | null;
+  estimatedInjectedTokens: number | null;
+  harnessInputTokens: number | null;
+  harnessOutputTokens: number | null;
+  curatorInputTokens: number | null;
+  curatorReasoningTokens: number | null;
+  curatorOutputTokens: number | null;
+  /** 모르면 null이다. 0이 아니다. */
+  clientReportedInputTokens: number | null;
+  clientReportedOutputTokens: number | null;
+  eventCount: number;
+}
+
+export interface TraceEventView {
+  id: string;
+  eventType: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface TraceDetail extends TraceSummary {
+  events: TraceEventView[];
+}
+
+export interface TraceListResponse {
+  traces: TraceSummary[];
+  /** 어느 흐름인지 추측하지 않고 따로 보여준다. */
+  untracked: Array<{
+    id: string;
+    eventType: string;
+    actorDisplayName: string | null;
+    createdAt: string;
+  }>;
+}
+
+/** 감축률. 분모가 0이면 계산하지 않는다 — 0%로 표시하면 거짓이다(§41). */
+export function contextReduction(
+  candidateCount: number | null,
+  selectedCount: number | null,
+): number | null {
+  if (!candidateCount || candidateCount <= 0 || selectedCount === null) return null;
+  return Math.round((1 - selectedCount / candidateCount) * 1000) / 10;
+}

@@ -1,8 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import type { ResolveTaskInput, ResolvedHarnessManifest } from '@harnessvault/domain';
 import { and, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
+import { TraceService } from '../trace/trace.service';
 import { DatabaseService } from '../db/database.service';
 import {
   assetRelations,
@@ -23,6 +23,7 @@ export class ResolverService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly traces: TraceService,
   ) {}
 
   /**
@@ -34,7 +35,18 @@ export class ResolverService {
     userId: string,
     input: ResolveTaskInput,
   ): Promise<ResolvedHarnessManifest> {
-    const traceId = randomUUID();
+    // 흐름의 시작점이다. 이후 툴 호출이 이 traceId로 같은 흐름에 묶인다.
+    const trace = await this.traces.start({
+      organizationId,
+      userId,
+      projectId: null,
+      purpose: input.task.description,
+      clientName: input.client?.name ?? null,
+      clientVersion: input.client?.version ?? null,
+      // 클라이언트가 스스로 보고한 값이다. modelSource가 그 사실을 남긴다(§59).
+      clientReportedModel: input.client?.model ?? null,
+    });
+    const traceId = trace.id;
 
     // 2단계 — 요청한 프로젝트가 이 조직 것이고 요청자가 속해 있는지 확인한다.
     const projectId = await this.resolveProjectId(organizationId, userId, input.projectId ?? null);
@@ -128,8 +140,16 @@ export class ResolverService {
         relations: relationRows,
       });
 
+      await this.traces.recordResolution(traceId, {
+        candidateCount: manifest.resolution.candidateCount,
+        selectedCount: manifest.resolution.selectedCount,
+        estimatedAvailableTokens: manifest.resolution.estimatedAvailableTokens,
+        estimatedInjectedTokens: manifest.resolution.estimatedInjectedTokens,
+      });
+
       await this.audit.record({
         organizationId,
+        traceId,
         actorUserId: userId,
         eventType: 'harness.resolved',
         targetType: 'trace',
@@ -151,6 +171,7 @@ export class ResolverService {
       if (error instanceof ResolutionConflictError) {
         await this.audit.record({
           organizationId,
+          traceId,
           actorUserId: userId,
           eventType: 'harness.resolution_conflict',
           targetType: 'trace',

@@ -4,11 +4,13 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import {
+  completeTaskInputSchema,
   harnessAssetTypeSchema,
   resolveTaskInputSchema,
 } from '@harnessvault/domain';
 import { parseBearerToken } from '../identity/session-token';
 import { ApprovalService } from '../approval/approval.service';
+import { TraceService } from '../trace/trace.service';
 import { ResourceService } from '../resource/resource.service';
 import { type McpIdentity, McpService } from './mcp.service';
 
@@ -44,6 +46,7 @@ export class McpController {
     private readonly mcp: McpService,
     private readonly resources: ResourceService,
     private readonly approvals: ApprovalService,
+    private readonly traces: TraceService,
   ) {}
 
   @All()
@@ -109,6 +112,14 @@ export class McpController {
       { name: 'harnessvault', version: '0.1.0' },
       { capabilities: { tools: {} } },
     );
+
+    /**
+     * 클라이언트가 보낸 traceId를 신뢰하지 않는다.
+     * 남의 흐름 id를 주면 null로 떨어뜨린다 — 잘못 이어진 감사 기록은 없는 것보다 나쁘다.
+     * 신뢰 경계인 여기서 한 번만 검증하고, 아래 서비스는 검증된 값만 받는다.
+     */
+    const safeTrace = (value: string | undefined) =>
+      this.traces.resolveTraceId(identity.organizationId, identity.user.id, value ?? null);
 
     /**
      * 툴 결과를 MCP 응답 형태로 감싼다.
@@ -205,6 +216,12 @@ export class McpController {
 
     // `purpose`는 전부 필수다. 왜 조회했는지가 남지 않으면 감사가 반쪽이 된다.
     const purpose = z.string().min(1).max(500).describe('이 조회가 필요한 이유');
+    // company.resolve_task가 돌려준 traceId를 이어 준다.
+    // 없으면 이벤트가 흐름에 묶이지 않고 "흐름 없음"으로 남는다 — 서버가 추측하지 않는다.
+    const traceId = z
+      .uuid()
+      .optional()
+      .describe('company.resolve_task가 돌려준 traceId. 같은 작업의 호출을 하나로 묶는다');
 
     server.registerTool(
       'company.resources',
@@ -229,11 +246,15 @@ export class McpController {
           query: z.string().min(1).max(500),
           limit: z.number().int().positive().max(100).optional(),
           purpose,
+          traceId,
         },
       },
       async (args) =>
-        respond('company.files.search', () =>
-          this.resources.filesSearch(identity.organizationId, identity.user.id, args),
+        respond('company.files.search', async () =>
+          this.resources.filesSearch(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -252,11 +273,15 @@ export class McpController {
             })
             .optional(),
           purpose,
+          traceId,
         },
       },
       async (args) =>
-        respond('company.files.read', () =>
-          this.resources.filesRead(identity.organizationId, identity.user.id, args),
+        respond('company.files.read', async () =>
+          this.resources.filesRead(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -265,11 +290,14 @@ export class McpController {
       {
         title: '회사 DB 스키마 조회',
         description: '테이블과 컬럼 목록을 돌려준다. object를 주면 그 테이블만 본다.',
-        inputSchema: { resourceId: z.uuid(), object: z.string().max(200).optional(), purpose },
+        inputSchema: { resourceId: z.uuid(), object: z.string().max(200).optional(), purpose, traceId },
       },
       async (args) =>
-        respond('company.db.schema', () =>
-          this.resources.dbSchema(identity.organizationId, identity.user.id, args),
+        respond('company.db.schema', async () =>
+          this.resources.dbSchema(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -279,11 +307,14 @@ export class McpController {
         title: '회사 DB 조회',
         description:
           'SELECT 질의만 실행한다. read only 트랜잭션으로 DB가 강제한다. 쓰기는 Policy·Approval이 붙는 이후 Phase에서 열린다.',
-        inputSchema: { resourceId: z.uuid(), query: z.string().min(1).max(10_000), purpose },
+        inputSchema: { resourceId: z.uuid(), query: z.string().min(1).max(10_000), purpose, traceId },
       },
       async (args) =>
-        respond('company.db.query', () =>
-          this.resources.dbQuery(identity.organizationId, identity.user.id, args),
+        respond('company.db.query', async () =>
+          this.resources.dbQuery(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -292,11 +323,14 @@ export class McpController {
       {
         title: '회사 Git 상태',
         description: '브랜치·HEAD·변경 파일 목록을 돌려준다.',
-        inputSchema: { resourceId: z.uuid(), purpose },
+        inputSchema: { resourceId: z.uuid(), purpose, traceId },
       },
       async (args) =>
-        respond('company.git.status', () =>
-          this.resources.gitStatus(identity.organizationId, identity.user.id, args),
+        respond('company.git.status', async () =>
+          this.resources.gitStatus(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -310,11 +344,15 @@ export class McpController {
           path: z.string().min(1).max(1000),
           ref: z.string().max(200).optional(),
           purpose,
+          traceId,
         },
       },
       async (args) =>
-        respond('company.git.read', () =>
-          this.resources.gitRead(identity.organizationId, identity.user.id, args),
+        respond('company.git.read', async () =>
+          this.resources.gitRead(identity.organizationId, identity.user.id, {
+            ...args,
+            traceId: await safeTrace(args.traceId),
+          }),
         ),
     );
 
@@ -339,11 +377,12 @@ export class McpController {
           query: z.string().min(1).max(10_000),
           purpose,
           projectId: z.uuid().optional(),
+          traceId,
           ...approvalContext,
         },
       },
       async (args) =>
-        respond('company.db.update', () =>
+        respond('company.db.update', async () =>
           this.resources.requestWrite(identity.organizationId, identity.user.id, {
             resourceId: args.resourceId,
             action: 'db.update',
@@ -351,6 +390,7 @@ export class McpController {
             proposedChange: args.query,
             purpose: args.purpose,
             projectId: args.projectId ?? null,
+            traceId: await safeTrace(args.traceId),
             context: {
               reason: args.reason,
               risk: args.risk ?? null,
@@ -374,11 +414,12 @@ export class McpController {
           content: z.string().max(1_000_000),
           purpose,
           projectId: z.uuid().optional(),
+          traceId,
           ...approvalContext,
         },
       },
       async (args) =>
-        respond('company.files.write', () =>
+        respond('company.files.write', async () =>
           this.resources.requestWrite(identity.organizationId, identity.user.id, {
             resourceId: args.resourceId,
             action: 'files.write',
@@ -386,6 +427,7 @@ export class McpController {
             proposedChange: `${args.path} (${args.content.length}자)`,
             purpose: args.purpose,
             projectId: args.projectId ?? null,
+            traceId: await safeTrace(args.traceId),
             context: {
               reason: args.reason,
               risk: args.risk ?? null,
@@ -426,6 +468,20 @@ export class McpController {
             identity.user.id,
             args.approvalRequestId,
           ),
+        ),
+    );
+
+    server.registerTool(
+      'company.task.complete',
+      {
+        title: '작업 흐름 종료',
+        description:
+          '작업을 마치며 흐름을 닫는다. 토큰 사용량을 안다면 함께 보낸다 — 모르면 보내지 않는다(0으로 채우지 않는다).',
+        inputSchema: completeTaskInputSchema.shape,
+      },
+      async (args) =>
+        respond('company.task.complete', () =>
+          this.traces.complete(identity.organizationId, identity.user.id, args),
         ),
     );
 

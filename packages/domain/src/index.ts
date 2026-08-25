@@ -5,3 +5,4 @@ export * from './compiler';
 export * from './resource';
 export * from './policy';
 export * from './approval';
+export * from './trace';

@@ -21,6 +21,7 @@ type PolicyDbRow = typeof resourcePolicies.$inferSelect;
 export interface PolicySubject {
   userId: string;
   projectId: string | null;
+  traceId?: string | null;
 }
 
 export interface ResourceTarget {
@@ -222,6 +223,7 @@ export class PolicyService {
     // 판정은 실행 여부와 무관하게 남긴다. 거부된 시도가 기록되지 않으면 감사가 반쪽이 된다.
     await this.audit.record({
       organizationId,
+      traceId: subject.traceId ?? null,
       actorUserId: subject.userId,
       eventType: 'policy.evaluated',
       targetType: 'resource',

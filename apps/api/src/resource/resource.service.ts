@@ -222,9 +222,11 @@ export class ResourceService {
     action: string,
     purpose: string,
     trace: AccessTrace,
+    traceId: string | null,
   ): Promise<void> {
     await this.audit.record({
       organizationId,
+      traceId,
       actorUserId,
       eventType: 'resource.accessed',
       targetType: 'resource',
@@ -252,10 +254,11 @@ export class ResourceService {
     projectId: string | null,
     row: ResourceRow,
     action: ResourceAction,
+    traceId: string | null = null,
   ): Promise<void> {
     const decision = await this.policy.decide(
       organizationId,
-      { userId, projectId },
+      { userId, projectId, traceId },
       { id: row.id, type: row.type, classification: row.classification },
       action,
     );
@@ -288,15 +291,17 @@ export class ResourceService {
     action: string,
     purpose: string,
     handler: () => Promise<{ data: T; trace: AccessTrace }>,
+    traceId: string | null = null,
   ): Promise<T> {
     try {
       const { data, trace } = await handler();
-      await this.recordAccess(organizationId, actorUserId, row, action, purpose, trace);
+      await this.recordAccess(organizationId, actorUserId, row, action, purpose, trace, traceId);
       return data;
     } catch (error) {
       // 실패도 남긴다. 접근 시도 자체가 감사 대상이다.
       await this.audit.record({
         organizationId,
+        traceId,
         actorUserId,
         eventType: 'resource.access_failed',
         targetType: 'resource',
@@ -316,12 +321,25 @@ export class ResourceService {
   async filesSearch(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; query: string; limit?: number; purpose: string; projectId?: string | null },
+    args: { resourceId: string; query: string; limit?: number; purpose: string; projectId?: string | null; traceId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'FILE_SYSTEM');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'files.search');
-    return this.execute(organizationId, userId, row, 'files.search', args.purpose, () =>
-      fileSystemAdapter.search(row.config, { query: args.query, limit: args.limit }),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'files.search',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'files.search',
+      args.purpose,
+      () => fileSystemAdapter.search(row.config, { query: args.query, limit: args.limit }),
+      args.traceId ?? null,
     );
   }
 
@@ -334,48 +352,101 @@ export class ResourceService {
       range?: { start?: number; end?: number };
       purpose: string;
       projectId?: string | null;
+      traceId?: string | null;
     },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'FILE_SYSTEM');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'files.read');
-    return this.execute(organizationId, userId, row, 'files.read', args.purpose, () =>
-      fileSystemAdapter.read(row.config, { path: args.path, range: args.range }),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'files.read',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'files.read',
+      args.purpose,
+      () => fileSystemAdapter.read(row.config, { path: args.path, range: args.range }),
+      args.traceId ?? null,
     );
   }
 
   async dbSchema(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; object?: string; purpose: string; projectId?: string | null },
+    args: { resourceId: string; object?: string; purpose: string; projectId?: string | null; traceId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'DATABASE');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'db.schema');
-    return this.execute(organizationId, userId, row, 'db.schema', args.purpose, () =>
-      databaseAdapter.schema(row.credentialRef, { object: args.object }),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'db.schema',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'db.schema',
+      args.purpose,
+      () => databaseAdapter.schema(row.credentialRef, { object: args.object }),
+      args.traceId ?? null,
     );
   }
 
   async dbQuery(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; query: string; purpose: string; projectId?: string | null },
+    args: { resourceId: string; query: string; purpose: string; projectId?: string | null; traceId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'DATABASE');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'db.query');
-    return this.execute(organizationId, userId, row, 'db.query', args.purpose, () =>
-      databaseAdapter.query(row.credentialRef, row.config, { query: args.query }),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'db.query',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'db.query',
+      args.purpose,
+      () => databaseAdapter.query(row.credentialRef, row.config, { query: args.query }),
+      args.traceId ?? null,
     );
   }
 
   async gitStatus(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; purpose: string; projectId?: string | null },
+    args: { resourceId: string; purpose: string; projectId?: string | null; traceId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'GIT');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'git.status');
-    return this.execute(organizationId, userId, row, 'git.status', args.purpose, () =>
-      gitAdapter.status(row.config),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'git.status',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'git.status',
+      args.purpose,
+      () => gitAdapter.status(row.config),
+      args.traceId ?? null,
     );
   }
 
@@ -400,6 +471,7 @@ export class ResourceService {
       context: ApprovalRequestContext;
       clientName?: string | null;
       clientReportedModel?: string | null;
+      traceId?: string | null;
     },
   ): Promise<
     | { executed: true; result: unknown }
@@ -413,7 +485,7 @@ export class ResourceService {
 
     const decision = await this.policy.decide(
       organizationId,
-      { userId, projectId: args.projectId ?? null },
+      { userId, projectId: args.projectId ?? null, traceId: args.traceId ?? null },
       { id: row.id, type: row.type, classification: row.classification },
       args.action,
     );
@@ -428,7 +500,15 @@ export class ResourceService {
     }
 
     if (decision.decision === 'ALLOW') {
-      const result = await this.runWrite(organizationId, userId, row, args.action, args.purpose, args.payload);
+      const result = await this.runWrite(
+        organizationId,
+        userId,
+        row,
+        args.action,
+        args.purpose,
+        args.payload,
+        args.traceId ?? null,
+      );
       return { executed: true, result };
     }
 
@@ -445,6 +525,7 @@ export class ResourceService {
       approvalPolicyId: decision.approvalPolicyId,
       clientName: args.clientName ?? null,
       clientReportedModel: args.clientReportedModel ?? null,
+      traceId: args.traceId ?? null,
     });
 
     return {
@@ -474,6 +555,7 @@ export class ResourceService {
         request.action as 'db.update' | 'files.write',
         `승인 ${approvalRequestId} 실행`,
         payload,
+        request.traceId,
       );
       await this.approvals.finishExecution(organizationId, approvalRequestId, userId, {
         ok: true,
@@ -497,29 +579,56 @@ export class ResourceService {
     action: 'db.update' | 'files.write',
     purpose: string,
     payload: Record<string, unknown>,
+    traceId: string | null = null,
   ): Promise<unknown> {
     if (action === 'db.update') {
-      return this.execute(organizationId, userId, row, 'db.update', purpose, () =>
-        databaseAdapter.update(row.credentialRef, { query: String(payload.query ?? '') }),
+      return this.execute(
+        organizationId,
+        userId,
+        row,
+        'db.update',
+        purpose,
+        () => databaseAdapter.update(row.credentialRef, { query: String(payload.query ?? '') }),
+        traceId,
       );
     }
-    return this.execute(organizationId, userId, row, 'files.write', purpose, () =>
-      fileSystemAdapter.write(row.config, {
-        path: String(payload.path ?? ''),
-        content: String(payload.content ?? ''),
-      }),
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'files.write',
+      purpose,
+      () =>
+        fileSystemAdapter.write(row.config, {
+          path: String(payload.path ?? ''),
+          content: String(payload.content ?? ''),
+        }),
+      traceId,
     );
   }
 
   async gitRead(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; path: string; ref?: string; purpose: string; projectId?: string | null },
+    args: { resourceId: string; path: string; ref?: string; purpose: string; projectId?: string | null; traceId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'GIT');
-    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'git.read');
-    return this.execute(organizationId, userId, row, 'git.read', args.purpose, () =>
-      gitAdapter.read(row.config, { path: args.path, ref: args.ref }),
+    await this.assertPolicyAllows(
+      organizationId,
+      userId,
+      args.projectId ?? null,
+      row,
+      'git.read',
+      args.traceId ?? null,
+    );
+    return this.execute(
+      organizationId,
+      userId,
+      row,
+      'git.read',
+      args.purpose,
+      () => gitAdapter.read(row.config, { path: args.path, ref: args.ref }),
+      args.traceId ?? null,
     );
   }
 }

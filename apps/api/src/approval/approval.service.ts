@@ -315,6 +315,7 @@ export class ApprovalService {
 
     await this.audit.record({
       organizationId: input.organizationId,
+      traceId: input.traceId ?? null,
       actorUserId: input.requesterUserId,
       eventType: 'approval.requested',
       targetType: 'approval_request',
@@ -582,6 +583,7 @@ export class ApprovalService {
 
     await this.audit.record({
       organizationId,
+      traceId: row.traceId,
       actorUserId: approverUserId,
       eventType: 'approval.decided',
       targetType: 'approval_request',
@@ -674,6 +676,11 @@ export class ApprovalService {
     outcome: { ok: true; summary: Record<string, unknown> } | { ok: false; reason: string },
   ): Promise<void> {
     const next: ApprovalStatus = outcome.ok ? 'EXECUTED' : 'FAILED';
+    const [existing] = await this.database.db
+      .select({ traceId: approvalRequests.traceId })
+      .from(approvalRequests)
+      .where(eq(approvalRequests.id, requestId))
+      .limit(1);
     await this.database.db
       .update(approvalRequests)
       .set({
@@ -685,6 +692,7 @@ export class ApprovalService {
 
     await this.audit.record({
       organizationId,
+      traceId: existing?.traceId ?? null,
       actorUserId: userId,
       eventType: outcome.ok ? 'approval.executed' : 'approval.failed',
       targetType: 'approval_request',

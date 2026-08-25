@@ -10,6 +10,7 @@ import { McpModule } from './mcp/mcp.module';
 import { PolicyModule } from './policy/policy.module';
 import { ResolverModule } from './resolver/resolver.module';
 import { ResourceModule } from './resource/resource.module';
+import { TraceModule } from './trace/trace.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ResourceModule } from './resource/resource.module';
     PolicyModule,
     ApprovalModule,
     ResourceModule,
+    TraceModule,
     McpModule,
     HealthModule,
   ],

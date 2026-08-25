@@ -17,7 +17,10 @@ import { Badge, ErrorState, LoadingState, Select } from './ui';
 const NAV: { label: string; items: { href: string; label: string; icon: ReactNode }[] }[] = [
   {
     label: 'Governance',
-    items: [{ href: '/approvals', label: '승인함', icon: <IconApproval /> }],
+    items: [
+      { href: '/approvals', label: '승인함', icon: <IconApproval /> },
+      { href: '/traces', label: 'Traces', icon: <IconTrace /> },
+    ],
   },
   {
     label: 'Harness',
@@ -181,6 +184,14 @@ const ICON = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
+
+function IconTrace() {
+  return (
+    <svg {...ICON} aria-hidden>
+      <path d="M2.5 8h3l2-4.5L10 12l1.5-4h2" />
+    </svg>
+  );
+}
 
 function IconApproval() {
   return (

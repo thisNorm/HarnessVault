@@ -6,3 +6,4 @@ export * from './harness';
 export * from './resource';
 export * from './policy';
 export * from './approval';
+export * from './trace';

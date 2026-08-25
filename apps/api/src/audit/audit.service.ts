@@ -10,6 +10,8 @@ export type AuditExecutor = Pick<DatabaseService['db'], 'insert'>;
 
 export interface AuditEventInput {
   organizationId?: string | null;
+  /** 흐름에 이어 붙일 수 없으면 null이다. 추측해서 채우지 않는다(§Phase 9). */
+  traceId?: string | null;
   actorUserId?: string | null;
   eventType: string;
   targetType?: string | null;
@@ -36,6 +38,7 @@ export class AuditService {
     try {
       await executor.insert(auditEvents).values({
         organizationId: event.organizationId ?? null,
+        traceId: event.traceId ?? null,
         actorUserId: event.actorUserId ?? null,
         eventType: event.eventType,
         targetType: event.targetType ?? null,
