@@ -44,6 +44,14 @@ npm run dev            # API      http://localhost:3000
 npm run dev:web        # 웹 콘솔  http://localhost:3100
 ```
 
+개발용 샘플 데이터를 넣는다. 조직·팀·프로젝트와 Harness 자산 6개가 생성된다.
+
+```bash
+SEED_EMAIL=test@test.com SEED_PASSWORD=1234 npm run db:seed
+```
+
+개발 환경에서는 비밀번호 최소 길이가 4자다. 운영(`NODE_ENV=production`)에서는 12자로 강제된다.
+
 ## 검증
 
 ```bash
