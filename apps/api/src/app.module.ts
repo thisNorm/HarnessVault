@@ -6,6 +6,7 @@ import { HarnessModule } from './harness/harness.module';
 import { HealthModule } from './health/health.module';
 import { IdentityModule } from './identity/identity.module';
 import { McpModule } from './mcp/mcp.module';
+import { PolicyModule } from './policy/policy.module';
 import { ResolverModule } from './resolver/resolver.module';
 import { ResourceModule } from './resource/resource.module';
 
@@ -17,6 +18,7 @@ import { ResourceModule } from './resource/resource.module';
     HarnessModule,
     ResolverModule,
     CompilerModule,
+    PolicyModule,
     ResourceModule,
     McpModule,
     HealthModule,

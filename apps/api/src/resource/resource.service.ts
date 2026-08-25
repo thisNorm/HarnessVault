@@ -13,7 +13,9 @@ import type {
   UpdateResourceInput,
 } from '@harnessvault/domain';
 import { and, asc, eq } from 'drizzle-orm';
+import type { ResourceAction } from '@harnessvault/domain';
 import { AuditService } from '../audit/audit.service';
+import { PolicyService } from '../policy/policy.service';
 import { DatabaseService } from '../db/database.service';
 import { resources } from '../db/schema';
 import {
@@ -37,6 +39,7 @@ export class ResourceService {
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
+    private readonly policy: PolicyService,
   ) {}
 
   /** 관리 API·MCP 응답용. credential **값**은 절대 담기지 않는다. */
@@ -145,7 +148,7 @@ export class ResourceService {
 
   /**
    * 실행 가능한 Resource를 꺼낸다.
-   * 조직 불일치·비활성은 여기서 막는다. Policy Engine은 Phase 7이다.
+   * 조직 불일치·비활성은 여기서 막는다. 정책 판정은 assertPolicyAllows가 따로 한다.
    */
   private async findRow(organizationId: string, resourceId: string): Promise<ResourceRow> {
     const [found] = await this.database.db
@@ -235,6 +238,46 @@ export class ResourceService {
     });
   }
 
+  /**
+   * 실행 전 정책 게이트(Phase 7).
+   * APPROVAL_REQUIRED는 **실행하지 않고 그대로 반환한다.**
+   * 승인 없이 실행하면 §34를 정면으로 어긴다. 승인 흐름은 Phase 8이다.
+   */
+  private async assertPolicyAllows(
+    organizationId: string,
+    userId: string,
+    projectId: string | null,
+    row: ResourceRow,
+    action: ResourceAction,
+  ): Promise<void> {
+    const decision = await this.policy.decide(
+      organizationId,
+      { userId, projectId },
+      { id: row.id, type: row.type, classification: row.classification },
+      action,
+    );
+
+    if (decision.decision === 'ALLOW') return;
+
+    if (decision.decision === 'APPROVAL_REQUIRED') {
+      throw new ForbiddenException({
+        code: 'APPROVAL_REQUIRED',
+        message: decision.reason,
+        policyIds: decision.policyIds,
+        approvalPolicyId: decision.approvalPolicyId,
+        // Phase 8이 붙기 전까지는 승인을 만들 수 없다. 그 사실을 숨기지 않는다.
+        note: '승인 흐름은 Phase 8에서 열립니다',
+      });
+    }
+
+    throw new ForbiddenException({
+      code: 'POLICY_DENIED',
+      message: decision.reason,
+      reasonCode: decision.reasonCode,
+      policyIds: decision.policyIds,
+    });
+  }
+
   private async execute<T>(
     organizationId: string,
     actorUserId: string,
@@ -270,9 +313,10 @@ export class ResourceService {
   async filesSearch(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; query: string; limit?: number; purpose: string },
+    args: { resourceId: string; query: string; limit?: number; purpose: string; projectId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'FILE_SYSTEM');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'files.search');
     return this.execute(organizationId, userId, row, 'files.search', args.purpose, () =>
       fileSystemAdapter.search(row.config, { query: args.query, limit: args.limit }),
     );
@@ -286,9 +330,11 @@ export class ResourceService {
       path: string;
       range?: { start?: number; end?: number };
       purpose: string;
+      projectId?: string | null;
     },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'FILE_SYSTEM');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'files.read');
     return this.execute(organizationId, userId, row, 'files.read', args.purpose, () =>
       fileSystemAdapter.read(row.config, { path: args.path, range: args.range }),
     );
@@ -297,9 +343,10 @@ export class ResourceService {
   async dbSchema(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; object?: string; purpose: string },
+    args: { resourceId: string; object?: string; purpose: string; projectId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'DATABASE');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'db.schema');
     return this.execute(organizationId, userId, row, 'db.schema', args.purpose, () =>
       databaseAdapter.schema(row.credentialRef, { object: args.object }),
     );
@@ -308,9 +355,10 @@ export class ResourceService {
   async dbQuery(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; query: string; purpose: string },
+    args: { resourceId: string; query: string; purpose: string; projectId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'DATABASE');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'db.query');
     return this.execute(organizationId, userId, row, 'db.query', args.purpose, () =>
       databaseAdapter.query(row.credentialRef, row.config, { query: args.query }),
     );
@@ -319,9 +367,10 @@ export class ResourceService {
   async gitStatus(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; purpose: string },
+    args: { resourceId: string; purpose: string; projectId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'GIT');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'git.status');
     return this.execute(organizationId, userId, row, 'git.status', args.purpose, () =>
       gitAdapter.status(row.config),
     );
@@ -330,9 +379,10 @@ export class ResourceService {
   async gitRead(
     organizationId: string,
     userId: string,
-    args: { resourceId: string; path: string; ref?: string; purpose: string },
+    args: { resourceId: string; path: string; ref?: string; purpose: string; projectId?: string | null },
   ) {
     const row = await this.findExecutable(organizationId, args.resourceId, 'GIT');
+    await this.assertPolicyAllows(organizationId, userId, args.projectId ?? null, row, 'git.read');
     return this.execute(organizationId, userId, row, 'git.read', args.purpose, () =>
       gitAdapter.read(row.config, { path: args.path, ref: args.ref }),
     );

@@ -5,9 +5,10 @@ import type {
   AddOrganizationMemberInput,
 } from '@harnessvault/domain';
 import { and, count, eq } from 'drizzle-orm';
+import { readOnlyResourceActions } from '@harnessvault/domain';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
-import { organizationMemberships, organizations, users } from '../db/schema';
+import { organizationMemberships, organizations, resourcePolicies, users } from '../db/schema';
 
 export interface OrganizationMemberView {
   userId: string;
@@ -52,6 +53,25 @@ export class OrganizationService {
         },
         tx,
       );
+
+      // 정책은 fail closed다. 기본 정책 없이 조직만 생기면 아무 Resource도 읽지 못한다.
+      // 같은 트랜잭션에 묶어 조직과 정책이 항상 함께 존재하게 한다.
+      //
+      // PolicyService를 부르지 않고 여기서 직접 넣는다 —
+      // Identity → Policy → Identity 모듈 순환을 만들지 않기 위해서다.
+      // 허용 Action 목록은 packages/domain을 단일 출처로 쓴다.
+      await tx.insert(resourcePolicies).values({
+        organizationId: created.id,
+        name: '기본 읽기 허용',
+        description:
+          '조직 생성 시 자동으로 만들어진 기본 정책입니다. 읽기 Action만 허용하며 쓰기는 포함하지 않습니다.',
+        effect: 'ALLOW',
+        scopeType: 'COMPANY',
+        scopeId: created.id,
+        inheritanceMode: 'OVERRIDABLE',
+        actions: [...readOnlyResourceActions],
+        createdBy: actorUserId,
+      });
 
       return created;
     });

@@ -11,6 +11,29 @@ import { parseBearerToken } from '../identity/session-token';
 import { ResourceService } from '../resource/resource.service';
 import { type McpIdentity, McpService } from './mcp.service';
 
+/**
+ * NestJS 예외에서 구조화된 실패 정보를 꺼낸다.
+ * 코드를 잃어버리면 에이전트가 다음 행동을 정할 수 없다.
+ */
+function toToolError(error: unknown): { code: string; message: string } & Record<string, unknown> {
+  if (typeof error === 'object' && error !== null && 'getResponse' in error) {
+    const response = (error as { getResponse: () => unknown }).getResponse();
+    if (typeof response === 'object' && response !== null) {
+      const body = response as Record<string, unknown>;
+      return {
+        code: typeof body.code === 'string' ? body.code : 'REQUEST_FAILED',
+        message: typeof body.message === 'string' ? body.message : '요청을 처리하지 못했습니다',
+        ...body,
+      };
+    }
+    return { code: 'REQUEST_FAILED', message: String(response) };
+  }
+  return {
+    code: 'REQUEST_FAILED',
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
 /** 도메인은 MCP SDK에 의존하지 않는다(§24). 이 파일이 유일한 접점이다. */
 @Controller('mcp')
 export class McpController {
@@ -85,15 +108,34 @@ export class McpController {
       { capabilities: { tools: {} } },
     );
 
-    /** 툴 결과를 MCP 응답 형태로 감싼다. 실패는 감싸지 않고 그대로 던진다. */
+    /**
+     * 툴 결과를 MCP 응답 형태로 감싼다.
+     *
+     * 실패는 구조화된 형태로 전달한다. 메시지 문자열만 주면 에이전트가
+     * POLICY_DENIED · APPROVAL_REQUIRED · RESOURCE_UNAVAILABLE을 구분하지 못해
+     * §61 실패 코드가 무의미해진다.
+     */
     const respond = async (toolName: string, run: () => Promise<unknown>) => {
-      const result = await run();
-      const text = JSON.stringify(result, null, 2);
-      await this.mcp.recordToolCall(identity, toolName, {
-        clientName,
-        resultBytes: Buffer.byteLength(text, 'utf8'),
-      });
-      return { content: [{ type: 'text' as const, text }] };
+      try {
+        const result = await run();
+        const text = JSON.stringify(result, null, 2);
+        await this.mcp.recordToolCall(identity, toolName, {
+          clientName,
+          resultBytes: Buffer.byteLength(text, 'utf8'),
+        });
+        return { content: [{ type: 'text' as const, text }] };
+      } catch (error) {
+        const payload = toToolError(error);
+        await this.mcp.recordToolCall(identity, toolName, {
+          clientName,
+          failed: true,
+          code: payload.code,
+        });
+        return {
+          isError: true,
+          content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+        };
+      }
     };
 
     server.registerTool(

@@ -4,3 +4,4 @@ export * from './identity';
 export * from './audit';
 export * from './harness';
 export * from './resource';
+export * from './policy';
