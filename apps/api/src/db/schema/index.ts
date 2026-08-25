@@ -2,3 +2,4 @@
 // Phase 2에서 Harness 도메인 테이블이 추가된다.
 export * from './identity';
 export * from './audit';
+export * from './harness';
