@@ -135,10 +135,22 @@ EMBEDDING_URL=http://localhost:11434/api/embed
 EMBEDDING_MODEL=nomic-embed-text
 ```
 
+의미 검색이 어휘 검색과 무엇이 다른지는 이 예로 확인할 수 있다.
+
+```
+자산   느린 조회 개선 — "오래 걸리는 조회문에 색인을 추가"
+질의   쿼리 성능 저하 — "SELECT 응답이 지연되어 인덱스를 검토"
+
+VECTOR   1위로 찾는다 (0.622)
+LEXICAL  겹치는 단어가 없어 찾지 못한다
+```
+
 - **768차원 모델만 쓸 수 있다.** 컬럼 DDL이 차원을 요구하므로 다른 차원의 모델을 붙이면
   저장을 거부하고 로그에 이유를 남긴다 — 잘라 넣어 유사도를 조용히 망가뜨리지 않는다.
 - 제공자가 없거나 죽어 있어도 기여·검색은 그대로 동작한다. 부가 기능의 장애가 본 경로를 막지 않는다.
-- 기존 자산에 임베딩을 채우려면 조직 관리자로 아래를 호출한다.
+- 자산을 만들거나 이름·설명을 고치면 임베딩이 자동으로 갱신된다.
+- 임베딩이 없어 검색에서 빠진 자산이 있으면 응답의 `unindexedCount`가 그 수를 알려 준다.
+- 임베딩을 붙이기 전에 만든 자산을 채우려면 조직 관리자로 아래를 호출한다.
 
 ```bash
 curl -X POST http://localhost:3000/organizations/<orgId>/contributions/embeddings/backfill -b harness_session=<token>
