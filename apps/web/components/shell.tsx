@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { orgLabel } from '@/lib/org-label';
 import { api } from '@/lib/api';
 import { CreateOrganization } from './create-organization';
 import { useSession } from './session';
@@ -112,7 +113,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
               >
                 {orgs.map((o) => (
                   <option key={o.id} value={o.id}>
-                    {o.name}
+                    {orgLabel(o, orgs)}
                   </option>
                 ))}
               </Select>

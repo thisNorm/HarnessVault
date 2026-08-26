@@ -97,6 +97,9 @@ export class CompilerService {
 
     await this.audit.record({
       organizationId,
+      // 이걸 빼면 컴파일이 흐름에서 떨어져 나가 "흐름 없는 이벤트"로 남는다.
+      // targetId만으로는 타임라인이 이어지지 않는다.
+      traceId: manifest.traceId,
       actorUserId: userId,
       eventType: 'harness.compiled',
       targetType: 'trace',

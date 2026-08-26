@@ -245,5 +245,33 @@ check(
   400,
 );
 
+console.log('\n── 컴파일이 흐름에 묶인다 ──');
+const compiledTraceId = codex.compiled.metadata.manifestTraceId;
+const postgresModule = await import('postgres');
+const sql = postgresModule.default(
+  process.env.DATABASE_URL ?? 'postgresql://harness:harness@localhost:5432/harnessvault',
+);
+try {
+  const linked = await sql`
+    select count(*)::int as c from audit_events
+    where event_type = 'harness.compiled' and trace_id = ${compiledTraceId}
+  `;
+  // trace_id를 안 넘기면 targetId가 있어도 타임라인이 이어지지 않고
+  // /traces의 "흐름 없는 이벤트"로 떨어진다.
+  check('harness.compiled가 흐름에 묶인다', linked[0].c > 0, true);
+
+  const timeline = expectOk(
+    '흐름 상세',
+    await call('GET', `/organizations/${orgId}/traces/${compiledTraceId}`),
+  );
+  check(
+    '타임라인에 컴파일이 보인다',
+    timeline.trace.events.some((event) => event.eventType === 'harness.compiled'),
+    true,
+  );
+} finally {
+  await sql.end();
+}
+
 console.log(`\n결과: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
