@@ -6,12 +6,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { LoginInput, PublicUser, RegisterInput } from '@harnessvault/domain';
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, gt, gte, isNull, like, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
 import { loginAttempts, organizationMemberships, organizations, sessions, users } from '../db/schema';
 import { getEnv } from '../env';
 import {
+  ipPairKey,
+  ipPrefix,
   lockRemainingSeconds,
   nextAfterFailure,
   throttleKey,
@@ -76,23 +78,19 @@ export class AuthService {
     return toPublicUser(created);
   }
 
-  async login(input: LoginInput): Promise<{ user: PublicUser; session: IssuedSession }> {
+  async login(
+    input: LoginInput,
+    /** 없으면 IP 축을 건너뛴다. 모르는 것을 한 통에 몰지 않는다. */
+    ip: string | null = null,
+  ): Promise<{ user: PublicUser; session: IssuedSession }> {
+    const env = getEnv();
     const key = throttleKey(input.email);
     const now = new Date();
 
-    // 잠겨 있으면 비밀번호를 확인조차 하지 않는다. 확인하면 그 시간 차이가 신호가 된다.
+    // 계정 축은 확인 **전에** 막는다. 확인하면 그 시간 차이가 계정 존재의 신호가 된다.
     const attempt = await this.loadAttempt(key);
-    const remaining = lockRemainingSeconds(attempt, now);
-    if (remaining !== null) {
-      throw new HttpException(
-        {
-          code: 'TOO_MANY_ATTEMPTS',
-          message: `로그인 시도가 너무 많습니다. ${Math.ceil(remaining / 60)}분 후 다시 시도하세요`,
-          retryAfterSeconds: remaining,
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
+    const accountLock = lockRemainingSeconds(attempt, now);
+    if (accountLock !== null) throw this.tooManyAttempts(accountLock);
 
     const [found] = await this.database.db
       .select()
@@ -103,16 +101,27 @@ export class AuthService {
     // 사용자 없음과 비밀번호 불일치를 구분해 알려주지 않는다.
     const valid = found ? await verifyPassword(input.password, found.passwordHash) : false;
     if (!found || !valid) {
-      await this.recordFailure(key, attempt, now);
+      await this.recordFailures(key, attempt, ip, input.email, now);
+      // IP 축은 **여기서만** 본다. 확인 전에 막으면 비밀번호가 맞는 사람까지 잠긴다 —
+      // NAT 뒤 사무실 하나가 통째로 로그인하지 못하게 되는 것이 이 축이 막으려던
+      // 공격보다 큰 피해다. 맞는 자격증명은 IP와 무관하게 통과한다.
+      if (ip) {
+        const windowStart = new Date(now.getTime() - env.LOGIN_LOCKOUT_MINUTES * 60_000);
+        // 어느 축에 걸렸는지 알려주지 않는다 — 알려주면 IP를 바꾸면 된다는 것을 배운다.
+        if (await this.sprayingFromIp(ip, windowStart)) {
+          throw this.tooManyAttempts(env.LOGIN_LOCKOUT_MINUTES * 60);
+        }
+      }
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
     if (found.status !== 'ACTIVE') {
       // 비활성 계정도 실패로 센다. 세지 않으면 무제한으로 두드릴 수 있다.
-      await this.recordFailure(key, attempt, now);
+      await this.recordFailures(key, attempt, ip, input.email, now);
       throw new UnauthorizedException('비활성화된 계정입니다');
     }
 
     // 성공하면 즉시 지운다. 오타 몇 번이 다음 로그인까지 따라다니지 않게 한다.
+    // IP 통은 지우지 않는다 — 같은 IP의 다른 계정 공격이 성공 하나로 초기화되면 안 된다.
     await this.database.db.delete(loginAttempts).where(eq(loginAttempts.email, key));
 
     const session = await this.issueSession(found.id);
@@ -177,6 +186,17 @@ export class AuthService {
       .orderBy(organizations.name);
   }
 
+  private tooManyAttempts(retryAfterSeconds: number): HttpException {
+    return new HttpException(
+      {
+        code: 'TOO_MANY_ATTEMPTS',
+        message: `로그인 시도가 너무 많습니다. ${Math.ceil(retryAfterSeconds / 60)}분 후 다시 시도하세요`,
+        retryAfterSeconds,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+
   private async loadAttempt(key: string): Promise<AttemptRecord | null> {
     const [row] = await this.database.db
       .select()
@@ -189,18 +209,55 @@ export class AuthService {
   }
 
   /**
-   * 실패를 기록한다. 키는 제출된 이메일 문자열이라 **존재하지 않는 계정도 똑같이 잠긴다** —
+   * 계정 축은 횟수를, IP 축은 (ip, 계정) 쌍을 남긴다.
+   *
+   * 계정 키는 제출된 이메일 문자열이라 **존재하지 않는 계정도 똑같이 잠긴다** —
    * 잠기는지 여부로 계정 존재가 새어 나가지 않게 하기 위해서다.
+   * 쌍은 같은 계정을 몇 번 두드리든 하나다 — 그래서 사무실이 잠기지 않는다.
    */
+  private async recordFailures(
+    key: string,
+    current: AttemptRecord | null,
+    ip: string | null,
+    email: string,
+    now: Date,
+  ): Promise<void> {
+    await this.recordFailure(key, current, getEnv().LOGIN_MAX_ATTEMPTS, now);
+    if (!ip) return;
+
+    await this.database.db
+      .insert(loginAttempts)
+      .values({ email: ipPairKey(ip, email), failedCount: 1, lastFailedAt: now })
+      .onConflictDoUpdate({
+        target: loginAttempts.email,
+        set: { failedCount: sql`${loginAttempts.failedCount} + 1`, lastFailedAt: now },
+      });
+  }
+
+  /** 창 안에 이 IP가 실패시킨 **서로 다른 계정 수**가 임계를 넘었는가. */
+  private async sprayingFromIp(ip: string, since: Date): Promise<boolean> {
+    const [row] = await this.database.db
+      .select({ value: count() })
+      .from(loginAttempts)
+      .where(
+        and(
+          like(loginAttempts.email, `${ipPrefix(ip)}%`),
+          gte(loginAttempts.lastFailedAt, since),
+        ),
+      );
+    return (row?.value ?? 0) >= getEnv().LOGIN_MAX_ACCOUNTS_PER_IP;
+  }
+
   private async recordFailure(
     key: string,
     current: AttemptRecord | null,
+    maxAttempts: number,
     now: Date,
   ): Promise<void> {
     const env = getEnv();
     const next = nextAfterFailure(
       current,
-      { maxAttempts: env.LOGIN_MAX_ATTEMPTS, lockoutMinutes: env.LOGIN_LOCKOUT_MINUTES },
+      { maxAttempts, lockoutMinutes: env.LOGIN_LOCKOUT_MINUTES },
       now,
     );
     await this.database.db
@@ -227,6 +284,25 @@ export class AuthService {
       .delete(sessions)
       .where(sql`${sessions.expiresAt} < now() or ${sessions.revokedAt} is not null`)
       .returning({ id: sessions.id });
+    return deleted.length;
+  }
+
+  /**
+   * 창을 벗어난 로그인 시도 기록을 지운다.
+   *
+   * IP 축이 (ip, 계정) 쌍마다 한 줄을 만들므로, 계정을 훑는 공격 한 번에
+   * 수천 줄이 생긴다. 창을 지나면 판정에 쓰이지 않으니 남길 이유가 없다.
+   * 잠금이 아직 살아 있는 줄은 건드리지 않는다.
+   */
+  async purgeStaleLoginAttempts(): Promise<number> {
+    const windowMinutes = getEnv().LOGIN_LOCKOUT_MINUTES;
+    const deleted = await this.database.db
+      .delete(loginAttempts)
+      .where(
+        sql`${loginAttempts.lastFailedAt} < now() - make_interval(mins => ${windowMinutes})
+            and (${loginAttempts.lockedUntil} is null or ${loginAttempts.lockedUntil} < now())`,
+      )
+      .returning({ email: loginAttempts.email });
     return deleted.length;
   }
 

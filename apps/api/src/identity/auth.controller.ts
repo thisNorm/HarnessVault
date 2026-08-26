@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -14,9 +15,10 @@ import {
   loginInputSchema,
   makeRegisterInputSchema,
 } from '@harnessvault/domain';
-import type { CookieOptions, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { cookieSecure, getEnv } from '../env';
+import { clientIp } from './login-throttle';
 import { AuthService } from './auth.service';
 import { CurrentAuth } from './current-user.decorator';
 import { SESSION_COOKIE_NAME } from './session-token';
@@ -60,9 +62,18 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body(new ZodValidationPipe(loginInputSchema)) input: LoginInput,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { user, session } = await this.auth.login(input);
+    // TRUST_PROXY가 꺼져 있으면 헤더를 보지 않는다. 위조 가능한 값이다.
+    const ip = clientIp(
+      {
+        forwardedFor: request.headers['x-forwarded-for'],
+        socketAddress: request.socket.remoteAddress ?? null,
+      },
+      getEnv().TRUST_PROXY,
+    );
+    const { user, session } = await this.auth.login(input, ip);
     response.cookie(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return { user };
   }

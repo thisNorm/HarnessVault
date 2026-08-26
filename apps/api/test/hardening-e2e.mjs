@@ -28,6 +28,14 @@ async function post(path, body) {
   };
 }
 
+const postgresModule = await import('postgres');
+const sql = postgresModule.default(
+  process.env.DATABASE_URL ?? 'postgresql://harness:harness@localhost:5432/harnessvault',
+);
+// 스로틀 자체를 검증하는 스위트라 알려진 상태에서 시작해야 한다.
+// 앞선 실행이 남긴 IP 통이 살아 있으면 임계 전 응답이 401이 아니라 429가 된다.
+await sql`delete from login_attempts`;
+
 const stamp = Date.now();
 const real = {
   email: `hard-${stamp}@example.com`,
@@ -111,11 +119,41 @@ check('임계 직전에 성공하면 통과', recovered.status, 200);
 const afterSuccess = await hammer(other, MAX - 1);
 check('카운터가 초기화됐다', afterSuccess.every((status) => status === 401), true);
 
+console.log('\n── IP 축은 여러 계정을 훑는 공격을 잡는다 ──');
+// 계정 축만 있으면 계정마다 9번씩 훑는 password spraying이 통과한다.
+//
+// IP 축은 실패 **횟수**가 아니라 **서로 다른 계정 수**를 센다.
+// 횟수로 세면 NAT 뒤 사무실 20명의 정상 오타와 스프레이가 같은 숫자로 보이고,
+// 어떤 임계값을 잡아도 사무실을 잠그거나 공격자를 놓치거나 둘 중 하나가 된다.
+const IP_MAX = Number(process.env.LOGIN_MAX_ACCOUNTS_PER_IP ?? 20);
+const sprayed = [];
+for (let i = 0; i < IP_MAX + 2; i++) {
+  // 계정마다 한 번씩만 두드린다 — 계정 축은 건드리지 않는다.
+  const res = await post('/auth/login', {
+    email: `spray-${stamp}-${i}@example.com`,
+    password: WRONG,
+  });
+  sprayed.push(res.status);
+}
+check('임계 전에는 통과한다', sprayed[0], 401);
+// TRUST_PROXY가 꺼져 있어도 소켓 주소로 IP를 얻으므로 이 경로는 항상 돈다.
+check('계정 수 임계를 넘으면 막힌다', sprayed.includes(429), true);
+// 어느 축에 걸렸는지 알려주면 공격자는 IP를 바꾸면 된다는 것을 배운다.
+const sprayLocked = await post('/auth/login', {
+  email: `spray-${stamp}-final@example.com`,
+  password: WRONG,
+});
+check('계정 잠금과 같은 코드', sprayLocked.body.code, 'TOO_MANY_ATTEMPTS');
+
+// **이것이 이 축의 전제다.** 확인 전에 막으면 NAT 뒤 사무실 하나가 통째로
+// 로그인하지 못하게 되고, 그 피해가 막으려던 공격보다 크다.
+const goodLoginWhileSprayed = await post('/auth/login', {
+  email: other.email,
+  password: other.password,
+});
+check('IP가 잠겨도 맞는 비밀번호는 통과한다', goodLoginWhileSprayed.status, 200);
+
 console.log('\n── 세션 정리 ──');
-const postgresModule = await import('postgres');
-const sql = postgresModule.default(
-  process.env.DATABASE_URL ?? 'postgresql://harness:harness@localhost:5432/harnessvault',
-);
 try {
   const userRow = await sql`select id from users where email = ${real.email}`;
   const userId = userRow[0].id;
@@ -140,13 +178,13 @@ try {
   check('정리 대상으로 잡힌다', purgeable[0].c > 0, true);
 
   const attempts = await sql`
-    select failed_count, locked_until from login_attempts where email = ${real.email}
+    select failed_count, locked_until from login_attempts where email = ${'email:' + real.email}
   `;
   check('시도 기록이 남는다', attempts[0].failed_count >= MAX, true);
   check('잠금 시각이 있다', attempts[0].locked_until !== null, true);
 
   const ghostAttempts = await sql`
-    select failed_count from login_attempts where email = ${ghost.email}
+    select failed_count from login_attempts where email = ${'email:' + ghost.email}
   `;
   // 없는 계정도 같은 테이블에 같은 방식으로 쌓인다.
   check('없는 계정도 기록된다', ghostAttempts[0].failed_count >= MAX, true);

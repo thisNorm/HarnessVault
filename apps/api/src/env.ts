@@ -36,6 +36,22 @@ export const envSchema = z.object({
   // 로그인 시도 제한. 계정 존재 여부를 흘리지 않도록 제출된 이메일 문자열로 센다.
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
   LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
+  /**
+   * 한 IP가 창 안에 실패시킬 수 있는 **서로 다른 계정 수**. 실패 횟수가 아니다.
+   * 사무실은 각자 자기 계정에서만 실패하므로 인원수 근처에서 멈추고,
+   * 계정을 훑는 공격만 이 선을 넘는다.
+   */
+  LOGIN_MAX_ACCOUNTS_PER_IP: z.coerce.number().int().positive().default(20),
+  /**
+   * `X-Forwarded-For`를 믿을지. **기본은 믿지 않는다.**
+   * 프록시가 없는데 믿으면 공격자가 요청마다 다른 IP를 적어 제한을 무력화한다.
+   * 반대로 프록시가 있는데 안 믿으면 모든 요청이 프록시 IP 하나로 묶여
+   * 정상 사용자 전체가 함께 잠긴다. 운영자가 배포 형태를 알고 켜야 한다.
+   */
+  TRUST_PROXY: z
+    .union([z.literal('true'), z.literal('false')])
+    .default('false')
+    .transform((value) => value === 'true'),
   // 쿠키 인증을 쓰므로 와일드카드 origin을 허용하지 않는다. 쉼표로 여러 개를 줄 수 있다.
   WEB_ORIGINS: z
     .string()

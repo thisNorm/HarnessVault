@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { lockRemainingSeconds, nextAfterFailure, throttleKey } from './login-throttle';
+import {
+  clientIp,
+  ipPairKey,
+  ipPrefix,
+  lockRemainingSeconds,
+  nextAfterFailure,
+  throttleKey,
+} from './login-throttle';
 
 const policy = { maxAttempts: 3, lockoutMinutes: 15 };
 const now = new Date('2026-08-26T10:00:00Z');
 
 describe('throttleKey', () => {
   it('대소문자와 공백을 정규화한다', () => {
-    expect(throttleKey('  Test@Example.COM ')).toBe('test@example.com');
+    expect(throttleKey('  Test@Example.COM ')).toBe('email:test@example.com');
   });
 });
 
@@ -69,5 +76,56 @@ describe('lockRemainingSeconds', () => {
     expect(
       lockRemainingSeconds({ failedCount: 3, lockedUntil: past, lastFailedAt: now }, now),
     ).toBeNull();
+  });
+});
+
+describe('throttleKey / ipPairKey', () => {
+  it('축을 접두사로 가른다', () => {
+    // 한 테이블을 쓰므로 이메일 'ip:x'가 IP 통을 오염시키면 안 된다.
+    expect(throttleKey('a@b.com')).toBe('email:a@b.com');
+    expect(ipPairKey('1.2.3.4', 'a@b.com')).toBe('ip:1.2.3.4|a@b.com');
+  });
+
+  it('IP당 쌍은 계정마다 다르다', () => {
+    // 같은 계정을 백 번 두드려도 쌍은 하나다 — 그래서 사무실이 잠기지 않는다.
+    expect(ipPairKey('1.2.3.4', 'a@b.com')).toBe(ipPairKey('1.2.3.4', 'A@B.com'));
+    expect(ipPairKey('1.2.3.4', 'a@b.com')).not.toBe(ipPairKey('1.2.3.4', 'c@d.com'));
+  });
+
+  it('접두사로 같은 IP의 쌍을 모을 수 있다', () => {
+    expect(ipPairKey('1.2.3.4', 'a@b.com').startsWith(ipPrefix('1.2.3.4'))).toBe(true);
+    expect(ipPairKey('9.9.9.9', 'a@b.com').startsWith(ipPrefix('1.2.3.4'))).toBe(false);
+  });
+});
+
+describe('clientIp', () => {
+  const socket = { socketAddress: '10.0.0.1' };
+
+  it('프록시를 믿지 않으면 헤더를 무시한다', () => {
+    // 프록시가 없는데 믿으면 공격자가 요청마다 다른 IP를 적어 제한을 무력화한다.
+    expect(clientIp({ ...socket, forwardedFor: '9.9.9.9' }, false)).toBe('10.0.0.1');
+  });
+
+  it('프록시를 믿으면 가장 오른쪽 홉을 쓴다', () => {
+    // 왼쪽은 클라이언트가 적어 보낼 수 있다. 우리 프록시가 덧붙인 값은 오른쪽 끝이다.
+    expect(clientIp({ ...socket, forwardedFor: '1.1.1.1, 2.2.2.2, 3.3.3.3' }, true)).toBe('3.3.3.3');
+  });
+
+  it('헤더가 배열로 와도 다룬다', () => {
+    expect(clientIp({ ...socket, forwardedFor: ['1.1.1.1', '2.2.2.2'] }, true)).toBe('2.2.2.2');
+  });
+
+  it('믿기로 했는데 헤더가 없으면 소켓으로 떨어진다', () => {
+    expect(clientIp(socket, true)).toBe('10.0.0.1');
+  });
+
+  it('아무것도 없으면 null이다', () => {
+    // "unknown" 하나로 몰면 그 통이 금방 차서 모든 사용자를 잠근다.
+    expect(clientIp({ socketAddress: null }, true)).toBeNull();
+    expect(clientIp({ socketAddress: '   ' }, false)).toBeNull();
+  });
+
+  it('빈 헤더 값은 건너뛴다', () => {
+    expect(clientIp({ ...socket, forwardedFor: ' , , ' }, true)).toBe('10.0.0.1');
   });
 });
