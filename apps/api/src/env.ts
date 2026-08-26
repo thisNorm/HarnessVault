@@ -76,7 +76,9 @@ export const envSchema = z.object({
   // Ollama가 없는 환경에서도 시스템 전체가 돌아야 한다.
   EMBEDDING_URL: z.url().optional(),
   EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
-  EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  // 웜 호출은 20ms, 첫 로드는 1.7초로 측정됐다(nomic-embed-text).
+  // 넉넉히 잡아도 손해가 없다 — 제공자가 죽어 있으면 연결 거부로 즉시 끝난다.
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   // Curator도 선택이다. 없으면 배선 검증용 대역이 돌고, 결과에 MOCK이 박힌다(§72).
   CURATOR_URL: z.url().optional(),

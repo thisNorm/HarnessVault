@@ -452,9 +452,16 @@ export class ContributionService {
     return this.detail(organizationId, contributionId);
   }
 
-  /** 자산 임베딩을 다시 계산한다. 승격 이전에 만들어진 자산에도 의미 검색이 닿게 한다. */
-  async backfillEmbeddings(organizationId: string): Promise<{ updated: number; skipped: number }> {
-    if (!this.embeddings.configured) return { updated: 0, skipped: 0 };
+  /**
+   * 자산 임베딩을 다시 계산한다. 승격 이전에 만들어진 자산에도 의미 검색이 닿게 한다.
+   *
+   * **건너뛴 자산의 key를 함께 돌려준다.** 개수만 주면 어느 자산이 검색에서
+   * 빠졌는지 알 수 없고, 그 자산은 아무도 모르게 영원히 안 잡힌다.
+   */
+  async backfillEmbeddings(
+    organizationId: string,
+  ): Promise<{ updated: number; skipped: number; skippedKeys: string[] }> {
+    if (!this.embeddings.configured) return { updated: 0, skipped: 0, skippedKeys: [] };
 
     const rows = await this.database.db
       .select({
@@ -467,11 +474,15 @@ export class ContributionService {
       .where(eq(harnessAssets.organizationId, organizationId));
 
     let updated = 0;
-    let skipped = 0;
+    const skippedKeys: string[] = [];
     for (const row of rows) {
-      const { vector } = await this.embeddings.embed(EmbeddingService.describe(row));
+      const text = EmbeddingService.describe(row);
+      let { vector } = await this.embeddings.embed(text);
+      // 한 번 더 해 본다. 모델 첫 로드처럼 한 번만 느린 경우가 가장 흔한 실패다 —
+      // 여기서 포기하면 그 자산만 의미 검색에서 영영 빠진다.
+      if (!vector) ({ vector } = await this.embeddings.embed(text));
       if (!vector) {
-        skipped++;
+        skippedKeys.push(row.key);
         continue;
       }
       await this.database.db
@@ -480,7 +491,7 @@ export class ContributionService {
         .where(eq(harnessAssets.id, row.id));
       updated++;
     }
-    return { updated, skipped };
+    return { updated, skipped: skippedKeys.length, skippedKeys };
   }
 
   private async loadForTransition(
