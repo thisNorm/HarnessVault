@@ -5,6 +5,7 @@
 // ECONNREFUSED 스택 트레이스다. 무엇을 해야 하는지 알려주지 않는다.
 // Playwright의 webServer가 웹에 해 주는 일을 API에도 해 준다.
 import { spawn, spawnSync } from 'node:child_process';
+import { openSync } from 'node:fs';
 import process from 'node:process';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000';
@@ -83,8 +84,12 @@ if (await isUp()) {
   console.log(`API가 이미 떠 있습니다 — ${API_URL}`);
 } else {
   console.log('API를 띄웁니다…');
-  // 로그를 삼키지 않는다. 기동 실패 원인이 보여야 한다.
+  // 기동 로그를 파일로 보낸다. 시연 출력을 덮으면 무엇이 일어났는지 안 보인다.
+  // 삼키지는 않는다 — 기동에 실패하면 아래에서 경로를 알려 준다.
+  const logPath = process.env.API_LOG ?? 'api-startup.log';
+  const logFile = openSync(logPath, 'w');
   started = run('npm', ['run', 'dev', '-w', '@harnessvault/api'], {
+    stdio: ['ignore', logFile, logFile],
     // POSIX에서 그룹째 죽이려면 자기 그룹을 가져야 한다.
     detached: process.platform !== 'win32',
   });
@@ -92,7 +97,8 @@ if (await isUp()) {
     await waitUntilUp(started, Date.now() + START_TIMEOUT_MS);
   } catch (error) {
     killTree(started);
-    console.error(`\n${error.message}`);
+    // 로그를 파일로 보냈으므로 어디를 봐야 하는지 알려 준다.
+    console.error(`\n${error.message}\n기동 로그: ${logPath}`);
     process.exit(1);
   }
   console.log(`API 준비됨 — ${API_URL}`);

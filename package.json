@@ -29,7 +29,8 @@
     "db:seed": "npm run db:seed -w @harnessvault/api",
     "setup:resources": "npm run setup:resources -w @harnessvault/api",
     "test:web": "node scripts/with-api.mjs npm run test:web -w @harnessvault/web",
-    "verify": "npm run ci && npm run test:e2e && npm run test:web"
+    "verify": "npm run ci && npm run test:e2e && npm run test:web",
+    "demo:approval": "node scripts/with-api.mjs node apps/api/test/scenario-approval-routing.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
