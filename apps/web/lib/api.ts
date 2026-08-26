@@ -356,6 +356,35 @@ export interface ContributionSummary {
   createdAt: string;
 }
 
+/* ---- Invitation ---- */
+
+export interface InvitationView {
+  id: string;
+  email: string;
+  role: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+  note: string;
+  expiresAt: string;
+  createdAt: string;
+  invitedByDisplayName: string;
+  acceptedAt: string | null;
+  /** 초대한 이메일과 실제 수락자가 다를 수 있다. 감추지 않는다. */
+  acceptedByDisplayName: string | null;
+  acceptedByEmail: string | null;
+}
+
+/** 토큰은 생성 응답에서 한 번만 나온다. 목록에는 없다. */
+export interface IssuedInvitation extends InvitationView {
+  token: string;
+}
+
+export interface InvitationPreview {
+  organizationName: string;
+  role: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+  expiresAt: string;
+}
+
 /* ---- Analytics (Phase 13) ---- */
 
 export interface CountBucket {

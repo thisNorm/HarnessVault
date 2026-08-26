@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { safeNext } from '@/lib/next-path';
 import { ApiError, post, type User } from '@/lib/api';
 import { Button, ErrorState, Field, Input } from './ui';
 
@@ -28,6 +29,7 @@ const COPY = {
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const copy = COPY[mode];
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -47,7 +49,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     setError(null);
     try {
       await post<{ user: User }>(copy.path, body);
-      router.replace('/admin/organization');
+      router.replace(safeNext(searchParams.get('next')));
     } catch (err: unknown) {
       setError(err instanceof ApiError ? err : new ApiError(0, String(err)));
     } finally {

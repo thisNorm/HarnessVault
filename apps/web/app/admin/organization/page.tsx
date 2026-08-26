@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { ApiError, api, del, post, type OrgMember, type Organization } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { useOrgId, useSession } from '@/components/session';
+import { Invitations } from '@/components/invitations';
 import {
   Button,
   Card,
@@ -95,6 +96,10 @@ export default function OrganizationPage() {
           </dl>
         ) : null}
       </Card>
+
+      <div className="mb-5">
+        <Invitations orgId={orgId} />
+      </div>
 
       <Card>
         <CardHeader
