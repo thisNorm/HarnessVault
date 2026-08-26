@@ -10,7 +10,7 @@ import { and, count, eq, gt, gte, isNull, like, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
 import { loginAttempts, organizationMemberships, organizations, sessions, users } from '../db/schema';
-import { getEnv } from '../env';
+import { getEnv, loginLimits } from '../env';
 import {
   ipPairKey,
   ipPrefix,
@@ -83,11 +83,11 @@ export class AuthService {
     /** 없으면 IP 축을 건너뛴다. 모르는 것을 한 통에 몰지 않는다. */
     ip: string | null = null,
   ): Promise<{ user: PublicUser; session: IssuedSession }> {
-    const env = getEnv();
+    const limits = loginLimits(getEnv());
     const key = throttleKey(input.email);
     const now = new Date();
 
-    const windowStart = new Date(now.getTime() - env.LOGIN_LOCKOUT_MINUTES * 60_000);
+    const windowStart = new Date(now.getTime() - limits.lockoutMinutes * 60_000);
 
     // 계정 축은 확인 **전에** 막는다. 확인하면 그 시간 차이가 계정 존재의 신호가 된다.
     const attempt = await this.loadAttempt(key);
@@ -104,7 +104,7 @@ export class AuthService {
     if (ip && (await this.pairExhausted(ip, input.email, windowStart))) {
       // 어느 축에 걸렸는지 알려주지 않는다 — 알려주면 IP를 바꾸면 된다는 것을 배운다.
       if (await this.sprayingFromIp(ip, windowStart)) {
-        throw this.tooManyAttempts(env.LOGIN_LOCKOUT_MINUTES * 60);
+        throw this.tooManyAttempts(limits.lockoutMinutes * 60);
       }
     }
 
@@ -228,7 +228,7 @@ export class AuthService {
     email: string,
     now: Date,
   ): Promise<void> {
-    await this.recordFailure(key, current, getEnv().LOGIN_MAX_ATTEMPTS, now);
+    await this.recordFailure(key, current, loginLimits(getEnv()).maxAttempts, now);
     if (!ip) return;
 
     await this.database.db
@@ -276,10 +276,9 @@ export class AuthService {
     maxAttempts: number,
     now: Date,
   ): Promise<void> {
-    const env = getEnv();
     const next = nextAfterFailure(
       current,
-      { maxAttempts, lockoutMinutes: env.LOGIN_LOCKOUT_MINUTES },
+      { maxAttempts, lockoutMinutes: loginLimits(getEnv()).lockoutMinutes },
       now,
     );
     await this.database.db
@@ -317,7 +316,7 @@ export class AuthService {
    * 잠금이 아직 살아 있는 줄은 건드리지 않는다.
    */
   async purgeStaleLoginAttempts(): Promise<number> {
-    const windowMinutes = getEnv().LOGIN_LOCKOUT_MINUTES;
+    const windowMinutes = loginLimits(getEnv()).lockoutMinutes;
     const deleted = await this.database.db
       .delete(loginAttempts)
       .where(

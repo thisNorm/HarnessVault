@@ -33,9 +33,15 @@ export const envSchema = z.object({
     .transform((value) => (value === undefined ? undefined : value === 'true')),
   SESSION_COOKIE_DOMAIN: z.string().min(1).optional(),
 
-  // 로그인 시도 제한. 계정 존재 여부를 흘리지 않도록 제출된 이메일 문자열로 센다.
-  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-  LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
+  /**
+   * 로그인 시도 제한. 계정 존재 여부를 흘리지 않도록 제출된 이메일 문자열로 센다.
+   *
+   * 명시하지 않으면 **개발에서는 느슨하고 운영에서는 조인다.**
+   * 비밀번호 최소 길이(4자 대 12자)와 같은 태도다 — 데모 중에 오타 몇 번으로
+   * 15분을 기다리게 만들 이유가 없고, 운영에서 그 느슨함을 물려줄 이유도 없다.
+   */
+  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
+  LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().positive().optional(),
   /**
    * 한 IP가 창 안에 실패시킬 수 있는 **서로 다른 계정 수**. 실패 횟수가 아니다.
    * 사무실은 각자 자기 계정에서만 실패하므로 인원수 근처에서 멈추고,
@@ -96,6 +102,24 @@ function assertCookieCombination(env: Env): void {
 /** 명시하지 않으면 프로덕션에서만 Secure다. */
 export function cookieSecure(env: Env): boolean {
   return env.SESSION_COOKIE_SECURE ?? env.NODE_ENV === 'production';
+}
+
+/** 운영 기본값. 무차별 대입을 실질적으로 막는 선이다. */
+export const PRODUCTION_LOGIN_LIMITS = { maxAttempts: 10, lockoutMinutes: 15 } as const;
+/**
+ * 개발 기본값. 잠기기 어렵고, 잠겨도 금방 풀린다.
+ * 데모 중에 로그인이 막혀 있는 시간이 길면 그것 자체가 더 큰 문제다.
+ */
+export const DEVELOPMENT_LOGIN_LIMITS = { maxAttempts: 20, lockoutMinutes: 1 } as const;
+
+export function loginLimits(env: Env): { maxAttempts: number; lockoutMinutes: number } {
+  const base =
+    env.NODE_ENV === 'production' ? PRODUCTION_LOGIN_LIMITS : DEVELOPMENT_LOGIN_LIMITS;
+  // 개별 지정은 언제나 우선한다. 환경 판단은 값을 안 줬을 때의 기본일 뿐이다.
+  return {
+    maxAttempts: env.LOGIN_MAX_ATTEMPTS ?? base.maxAttempts,
+    lockoutMinutes: env.LOGIN_LOCKOUT_MINUTES ?? base.lockoutMinutes,
+  };
 }
 
 export type Env = z.infer<typeof envSchema>;

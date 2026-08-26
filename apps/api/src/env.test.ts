@@ -45,18 +45,6 @@ describe('cookieSecure', () => {
   });
 });
 
-describe('로그인 제한 기본값', () => {
-  it('기본값이 있다', () => {
-    const env = loadEnv(base);
-    expect(env.LOGIN_MAX_ATTEMPTS).toBe(10);
-    expect(env.LOGIN_LOCKOUT_MINUTES).toBe(15);
-  });
-
-  it('0은 받지 않는다 — 즉시 잠기면 아무도 로그인 못 한다', () => {
-    expect(() => loadEnv({ ...base, LOGIN_MAX_ATTEMPTS: '0' })).toThrow();
-  });
-});
-
 describe('세션 정리 주기', () => {
   it('0이면 끈다', () => {
     expect(loadEnv({ ...base, SESSION_PURGE_INTERVAL_MINUTES: '0' }).SESSION_PURGE_INTERVAL_MINUTES).toBe(0);

@@ -62,29 +62,34 @@ check('Path=/', /path=\//i.test(cookie), true);
 check('SameSite 지정됨', /samesite=/i.test(cookie), true);
 
 console.log('\n── 실패를 세되 계정 존재를 흘리지 않는다 ──');
-const MAX = Number(process.env.LOGIN_MAX_ATTEMPTS ?? 10);
+// 임계값은 환경마다 다르다(개발은 느슨, 운영은 조임). 숫자를 가정하지 않고 **찾는다** —
+// 가정하면 기본값을 바꿀 때마다 테스트가 깨지고, 그건 결함이 아니라 거짓 경보다.
+const PROBE_CAP = 60;
 
-/** 임계 직전까지 두드린다. 아직 잠기면 안 된다. */
-async function hammer(account, times) {
-  const statuses = [];
-  for (let i = 0; i < times; i++) {
-    const res = await post('/auth/login', { email: account.email, password: WRONG });
-    statuses.push(res.status);
+/** 잠길 때까지 두드리고, 몇 번째에 잠겼는지와 그 전 응답들을 돌려준다. */
+async function hammerUntilLocked(email) {
+  const before = [];
+  for (let i = 1; i <= PROBE_CAP; i++) {
+    const res = await post('/auth/login', { email, password: WRONG });
+    if (res.status === 429) return { lockedAt: i, before, locked: res };
+    before.push(res.status);
   }
-  return statuses;
+  return { lockedAt: null, before, locked: null };
 }
 
-// 임계에 닿는 그 시도까지는 401이다 — 비밀번호가 틀린 것은 사실이므로 그렇게 답한다.
-// 잠기는 것은 그 실패의 결과이고, 다음 시도부터 429가 된다.
-const realBefore = await hammer(real, MAX);
-const ghostBefore = await hammer(ghost, MAX);
-check('실재 계정 — 임계까지는 401', new Set(realBefore).size === 1 && realBefore[0] === 401, true);
-// 없는 계정도 같은 응답이어야 한다.
-check('없는 계정 — 임계까지도 401', new Set(ghostBefore).size === 1 && ghostBefore[0] === 401, true);
+const realProbe = await hammerUntilLocked(real.email);
+const ghostProbe = await hammerUntilLocked(ghost.email);
+const MAX = realProbe.before.length;
 
-const realLocked = await post('/auth/login', { email: real.email, password: WRONG });
-const ghostLocked = await post('/auth/login', { email: ghost.email, password: WRONG });
-check('임계를 넘으면 실재 계정 잠김', realLocked.status, 429);
+check(`잠긴다 (${MAX}회 실패 후)`, realProbe.lockedAt !== null, true);
+// 임계에 닿기 전까지는 401이다 — 비밀번호가 틀린 것은 사실이므로 그렇게 답한다.
+check('임계 전에는 전부 401', realProbe.before.every((status) => status === 401), true);
+// 없는 계정도 **같은 횟수에** 같은 응답이어야 한다. 여기가 갈리면 계정 존재가 새어 나간다.
+check('없는 계정도 같은 횟수에 잠긴다', ghostProbe.lockedAt, realProbe.lockedAt);
+check('없는 계정도 그 전까지 401', ghostProbe.before.every((status) => status === 401), true);
+
+const realLocked = realProbe.locked;
+const ghostLocked = ghostProbe.locked;
 // 이것이 이 설계의 핵심이다. 사용자 행에 카운터를 붙였다면 여기가 401로 갈라져
 // 공격자가 계정 존재를 알아낸다.
 check('없는 계정도 똑같이 잠김', ghostLocked.status, 429);
@@ -112,11 +117,22 @@ const other = {
   displayName: '두 번째 사용자',
 };
 await post('/auth/register', other);
-await hammer(other, MAX - 1);
+
+/** 임계 직전까지만 두드린다. */
+async function hammer(email, times) {
+  const statuses = [];
+  for (let i = 0; i < times; i++) {
+    const res = await post('/auth/login', { email, password: WRONG });
+    statuses.push(res.status);
+  }
+  return statuses;
+}
+
+await hammer(other.email, MAX - 1);
 const recovered = await post('/auth/login', { email: other.email, password: other.password });
 check('임계 직전에 성공하면 통과', recovered.status, 200);
 // 카운터가 남아 있었다면 아래 MAX-1번 중에 429가 섞인다.
-const afterSuccess = await hammer(other, MAX - 1);
+const afterSuccess = await hammer(other.email, MAX - 1);
 check('카운터가 초기화됐다', afterSuccess.every((status) => status === 401), true);
 
 console.log('\n── IP 축은 여러 계정을 훑는 공격을 잡는다 ──');
@@ -239,14 +255,15 @@ try {
   const attempts = await sql`
     select failed_count, locked_until from login_attempts where email = ${'email:' + real.email}
   `;
-  check('시도 기록이 남는다', attempts[0].failed_count >= MAX, true);
+  // 잠긴 그 요청은 확인 전에 막혀 기록되지 않는다. 그래서 정확히 MAX다.
+  check('시도 기록이 남는다', attempts[0].failed_count, MAX);
   check('잠금 시각이 있다', attempts[0].locked_until !== null, true);
 
   const ghostAttempts = await sql`
     select failed_count from login_attempts where email = ${'email:' + ghost.email}
   `;
   // 없는 계정도 같은 테이블에 같은 방식으로 쌓인다.
-  check('없는 계정도 기록된다', ghostAttempts[0].failed_count >= MAX, true);
+  check('없는 계정도 같은 수로 기록된다', ghostAttempts[0].failed_count, MAX);
 
   // 비밀번호가 이 테이블에 새어 들어가면 안 된다.
   const leak = await sql`
