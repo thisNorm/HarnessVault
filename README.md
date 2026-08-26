@@ -174,6 +174,23 @@ CURATOR_MODEL=gemma3:4b
 - Curator가 죽어 있어도 승격·거절 경로는 그대로 열려 있다(§61).
 - 모델은 갈아끼울 수 있다. 코드가 특정 모델에 묶여 있지 않다.
 
+## 배포 전 확인
+
+```bash
+# .env — 웹과 API 도메인이 갈리는 배포라면
+SESSION_COOKIE_SAMESITE=none
+SESSION_COOKIE_SECURE=true
+```
+
+`SameSite=none`인데 `Secure`가 아니면 **부팅이 실패한다.** 브라우저가 이 조합의 쿠키를
+조용히 버리기 때문에, 그대로 뜨면 "로그인이 안 된다"만 보이고 원인을 찾을 수 없다.
+
+로그인은 같은 이메일로 10회 실패하면 15분간 잠긴다(`LOGIN_MAX_ATTEMPTS`, `LOGIN_LOCKOUT_MINUTES`).
+**존재하지 않는 계정도 똑같이 잠긴다** — 잠기는지 여부로 계정 존재가 새어 나가지 않게 하기 위해서다.
+IP 단위 제한은 없으므로, 프록시 앞단에서 별도로 두는 것을 권한다.
+
+만료 세션은 `SESSION_PURGE_INTERVAL_MINUTES`(기본 60분)마다, 그리고 부팅 직후에 정리된다.
+
 ## 시크릿 스캔
 
 `npm install`이 `core.hooksPath`를 `.githooks`로 설정하므로 커밋 시 자격증명 검사가 자동 실행된다.
