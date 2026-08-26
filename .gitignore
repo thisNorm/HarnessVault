@@ -22,3 +22,8 @@ Thumbs.db
 
 # 로컬 에이전트 도구 설정
 .claude/
+
+# Playwright 산출물
+playwright-report/
+test-results/
+blob-report/
