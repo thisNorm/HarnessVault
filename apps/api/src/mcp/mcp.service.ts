@@ -226,12 +226,16 @@ export class McpService {
 
   async findSimilar(identity: McpIdentity, args: FindSimilarArgs) {
     // 벡터·어휘 판정은 ContributionService 한 곳에 있다. 두 곳에서 다르게 고르면 결과가 갈린다.
-    const { candidates, method } = await this.contributions.similarTo(identity.organizationId, {
-      title: args.title,
-      description: [args.description, JSON.stringify(args.structuredContent ?? '')].join(' '),
-      capabilityId: args.capability ?? null,
-    });
-    return { method, candidates };
+    const { candidates, method, unindexedCount } = await this.contributions.similarTo(
+      identity.organizationId,
+      {
+        title: args.title,
+        description: [args.description, JSON.stringify(args.structuredContent ?? '')].join(' '),
+        capabilityId: args.capability ?? null,
+      },
+    );
+    // 빠진 자산이 있으면 알린다. 완전한 결과인 척하지 않는다.
+    return { method, unindexedCount, candidates };
   }
 
   async contribute(identity: McpIdentity, args: ContributeInput) {

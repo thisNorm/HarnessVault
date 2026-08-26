@@ -20,6 +20,7 @@ const ROUTES = [
   { path: '/admin/groups', heading: '그룹' },
   { path: '/admin/resources', heading: 'Resources' },
   { path: '/admin/policies', heading: 'Policies' },
+  { path: '/admin/output-contracts', heading: '산출물 계약' },
 ];
 
 test.describe('콘솔 라우트', () => {

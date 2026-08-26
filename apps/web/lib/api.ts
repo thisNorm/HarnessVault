@@ -356,6 +356,25 @@ export interface ContributionSummary {
   createdAt: string;
 }
 
+/* ---- Output Contract 관리 ---- */
+
+export interface Team {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface OutputContract {
+  id: string;
+  name: string;
+  description: string;
+  scopeType: ScopeType;
+  scopeId: string;
+  /** 요구 항목. 하위 스코프는 더하기만 하고 빼지 못한다. */
+  fields: string[];
+  createdAt: string;
+}
+
 /* ---- Invitation ---- */
 
 export interface InvitationView {

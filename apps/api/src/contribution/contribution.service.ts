@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -20,7 +21,7 @@ import {
   type SimilarCandidate,
   type SimilarityMethod,
 } from '@harnessvault/domain';
-import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
 import {
@@ -42,6 +43,8 @@ export interface SubmitResult {
 
 @Injectable()
 export class ContributionService {
+  private readonly logger = new Logger(ContributionService.name);
+
   constructor(
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
@@ -142,7 +145,12 @@ export class ContributionService {
   async findSimilar(
     organizationId: string,
     query: { text: string; capabilityId?: string | null; vector?: number[] | null },
-  ): Promise<{ candidates: SimilarCandidate[]; method: SimilarityMethod }> {
+  ): Promise<{
+    candidates: SimilarCandidate[];
+    method: SimilarityMethod;
+    /** 임베딩이 없어 벡터 검색에서 빠진 자산 수. 0이 아니면 결과가 완전하지 않다. */
+    unindexedCount: number;
+  }> {
     if (query.vector) {
       const rows = await this.database.db
         .select({
@@ -157,6 +165,19 @@ export class ContributionService {
         );
 
       if (rows.length > 0) {
+        // 임베딩이 없는 자산은 점수를 매길 수 없어 조용히 빠진다.
+        // 빠졌다는 사실을 숨기면 "닮은 게 없다"로 위장된다.
+        const [total] = await this.database.db
+          .select({ value: count() })
+          .from(harnessAssets)
+          .where(eq(harnessAssets.organizationId, organizationId));
+        const unindexedCount = (total?.value ?? rows.length) - rows.length;
+        if (unindexedCount > 0) {
+          this.logger.warn(
+            `임베딩이 없는 자산 ${unindexedCount}개가 벡터 검색에서 빠졌습니다. ` +
+              `POST /organizations/${organizationId}/contributions/embeddings/backfill 로 채우세요`,
+          );
+        }
         const vector = query.vector;
         const scored: ScoredAsset[] = rows.map((row) => ({
           assetId: row.assetId,
@@ -164,7 +185,7 @@ export class ContributionService {
           name: row.name,
           score: cosineSimilarity(vector, row.embedding ?? []),
         }));
-        return { candidates: classifyDuplicates(scored), method: 'VECTOR' };
+        return { candidates: classifyDuplicates(scored), method: 'VECTOR', unindexedCount };
       }
       // 임베딩이 붙은 자산이 하나도 없으면 벡터 검색은 빈 결과다.
       // 그때 VECTOR라고 보고하면 "닮은 게 없다"로 위장된다. 어휘로 떨어진다.
@@ -192,6 +213,8 @@ export class ContributionService {
         })),
       ),
       method: 'LEXICAL',
+      // 어휘 검색은 모든 자산을 본다. 빠지는 것이 없다.
+      unindexedCount: 0,
     };
   }
 
@@ -199,7 +222,11 @@ export class ContributionService {
   async similarTo(
     organizationId: string,
     input: { title: string; description: string; capabilityId?: string | null },
-  ): Promise<{ candidates: SimilarCandidate[]; method: SimilarityMethod }> {
+  ): Promise<{
+    candidates: SimilarCandidate[];
+    method: SimilarityMethod;
+    unindexedCount: number;
+  }> {
     const text = EmbeddingService.describe({
       key: '',
       name: input.title,

@@ -316,7 +316,11 @@ const similar = toolResult(
     { token: adminToken, orgId },
   ),
 );
-check('어휘 기반임을 밝힘', similar.method, 'LEXICAL');
+// 임베딩 제공자가 붙어 있으면 VECTOR, 없으면 LEXICAL이다. 값을 박으면 환경에 따라 깨진다 —
+// 중요한 것은 **무엇으로 찾았는지 밝히는가**이지 어느 쪽이냐가 아니다.
+check('무엇으로 찾았는지 밝힘', ['VECTOR', 'LEXICAL'].includes(similar.method), true);
+// 벡터로 돌 때 임베딩 없는 자산이 빠졌다면 그 사실도 알려야 한다.
+check('빠진 자산 수를 알림', typeof similar.unindexedCount, 'number');
 check('기존 자산을 후보로 제시', similar.candidates.some((c) => c.key === 'db.troubleshoot.core'), true);
 check('중복 후보 힌트', typeof similar.candidates[0]?.relationHint, 'string');
 

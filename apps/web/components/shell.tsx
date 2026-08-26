@@ -46,6 +46,7 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
     items: [
       { href: '/admin/resources', label: 'Resources', icon: <IconResource /> },
       { href: '/admin/policies', label: 'Policies', icon: <IconPolicy /> },
+      { href: '/admin/output-contracts', label: '산출물 계약', icon: <IconContract /> },
     ],
   },
 ];
@@ -248,6 +249,16 @@ function IconAnalytics() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4">
       <path d="M2.5 13.5h11" strokeLinecap="round" />
       <path d="M4.5 11V7.5M8 11V3.5M11.5 11V6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** 산출물 계약 — 체크 목록. */
+function IconContract() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4">
+      <path d="M3 4.5h2M3 8h2M3 11.5h2" strokeLinecap="round" />
+      <path d="M7.5 4.5h5.5M7.5 8h5.5M7.5 11.5h5.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -14,6 +14,7 @@ import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
 import { assetRelations, assetVersions, harnessAssets } from '../db/schema';
 import { CapabilityService } from './capability.service';
+import { EmbeddingService } from '../contribution/embedding.service';
 
 @Injectable()
 export class AssetService {
@@ -21,7 +22,24 @@ export class AssetService {
     private readonly database: DatabaseService,
     private readonly audit: AuditService,
     private readonly capabilityService: CapabilityService,
+    private readonly embeddings: EmbeddingService,
   ) {}
+
+  /**
+   * 자산의 임베딩을 만든다. 제공자가 없으면 null이다.
+   *
+   * **자산이 생기거나 이름·설명이 바뀔 때마다 갱신해야 한다.** 안 그러면
+   * 임베딩이 있는 자산과 없는 자산이 섞이고, 벡터 검색은 없는 쪽을 조용히 건너뛴다 —
+   * 자산이 어떻게 만들어졌는지에 따라 검색 결과가 달라진다.
+   */
+  private async embedFor(input: {
+    key: string;
+    name: string;
+    description: string;
+  }): Promise<number[] | null> {
+    const { vector } = await this.embeddings.embed(EmbeddingService.describe(input));
+    return vector;
+  }
 
   async list(organizationId: string, query: ListAssetsQuery) {
     const filters: SQL[] = [eq(harnessAssets.organizationId, organizationId)];
@@ -134,6 +152,7 @@ export class AssetService {
         selector: input.selector,
         reviewAfter: input.reviewAfter ? new Date(input.reviewAfter) : null,
         createdBy: actorUserId,
+        embedding: await this.embedFor(input),
       })
       .onConflictDoNothing({
         target: [
@@ -179,11 +198,23 @@ export class AssetService {
       await this.capabilityService.assertBelongsToOrganization(organizationId, input.capabilityId);
     }
 
+    // 이름·설명이 바뀌면 임베딩도 바뀌어야 한다. 안 그러면 옛 뜻으로 검색된다.
+    const textChanged = input.name !== undefined || input.description !== undefined;
+    const embedding = textChanged
+      ? await this.embedFor({
+          key: asset.key,
+          name: input.name ?? asset.name,
+          description: input.description ?? asset.description,
+        })
+      : null;
+
     const [updated] = await this.database.db
       .update(harnessAssets)
       .set({
         ...(input.name === undefined ? {} : { name: input.name }),
         ...(input.description === undefined ? {} : { description: input.description }),
+        // 새로 만들지 못했으면 옛 값을 남긴다. 지우면 검색에서 아예 빠진다.
+        ...(embedding === null ? {} : { embedding }),
         ...(input.capabilityId === undefined ? {} : { capabilityId: input.capabilityId ?? null }),
         ...(input.inheritanceMode === undefined
           ? {}
