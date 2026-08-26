@@ -139,6 +139,26 @@ EMBEDDING_MODEL=nomic-embed-text
 curl -X POST http://localhost:3000/organizations/<orgId>/contributions/embeddings/backfill -b harness_session=<token>
 ```
 
+## Curator (선택)
+
+Candidate가 기존 자산과 어떤 관계인지 추천을 낸다. 설정하지 않으면 배선 검증용 대역이 돌고,
+**결과에 `MOCK`이 박혀 실제 모델이 판단한 것이 아님을 화면과 감사 양쪽에 밝힌다.**
+
+```bash
+ollama pull gemma3:4b
+```
+
+```bash
+# .env
+CURATOR_URL=http://localhost:11434/api/chat
+CURATOR_MODEL=gemma3:4b
+```
+
+- **판정은 추천이다.** `CONFLICTS_WITH`가 나와도 기여는 그대로 있고 `DUPLICATE`가 나와도 거절되지 않는다.
+  승격·거절은 `/candidates`에서 사람이 한다.
+- Curator가 죽어 있어도 승격·거절 경로는 그대로 열려 있다(§61).
+- 모델은 갈아끼울 수 있다. 코드가 특정 모델에 묶여 있지 않다.
+
 ## 시크릿 스캔
 
 `npm install`이 `core.hooksPath`를 `.githooks`로 설정하므로 커밋 시 자격증명 검사가 자동 실행된다.
