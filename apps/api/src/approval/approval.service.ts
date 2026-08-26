@@ -12,6 +12,7 @@ import type {
   ApprovalRequestView,
   ApprovalStatus,
   ApproverSpec,
+  OrganizationRole,
   CreateApprovalPolicyInput,
 } from '@harnessvault/domain';
 import { canTransitionApproval, executionBlockedCode, isExecutable } from '@harnessvault/domain';
@@ -360,7 +361,19 @@ export class ApprovalService {
     return updated ?? { ...row, status: effective };
   }
 
-  async list(organizationId: string, userId: string): Promise<ApprovalRequestView[]> {
+  /**
+   * 볼 자격이 있는 요청만 돌려준다.
+   *
+   * 요청 본문에는 실행하려는 SQL·파일 내용이 그대로 들어 있다(§55가 요구한다 —
+   * 승인자가 판단하려면 무엇을 바꾸는지 봐야 한다). 그런데 그것을 조직원 전체에게
+   * 보이면 **RESTRICTED를 보안팀으로 라우팅한 의미가 사라진다.**
+   * 결정 권한은 막아 두고 내용만 보여 주는 것은 절반만 막은 것이다.
+   */
+  async list(
+    organizationId: string,
+    userId: string,
+    orgRole: OrganizationRole,
+  ): Promise<ApprovalRequestView[]> {
     const rows = await this.database.db
       .select()
       .from(approvalRequests)
@@ -370,18 +383,52 @@ export class ApprovalService {
 
     const views: ApprovalRequestView[] = [];
     for (const row of rows) {
-      views.push(await this.toView(await this.syncExpiry(row), userId));
+      const view = await this.toView(await this.syncExpiry(row), userId);
+      if (this.mayView(view, row, userId, orgRole)) views.push(view);
     }
     return views;
   }
 
-  async detail(
+  /** 가시성 검사 없이 본다. 이미 자격이 확인된 내부 경로 전용이다. */
+  private async viewOf(
     organizationId: string,
     requestId: string,
     userId: string,
   ): Promise<ApprovalRequestView> {
     const row = await this.syncExpiry(await this.loadRequest(organizationId, requestId));
     return this.toView(row, userId);
+  }
+
+  async detail(
+    organizationId: string,
+    requestId: string,
+    userId: string,
+    orgRole: OrganizationRole,
+  ): Promise<ApprovalRequestView> {
+    const row = await this.syncExpiry(await this.loadRequest(organizationId, requestId));
+    const view = await this.toView(row, userId);
+    if (!this.mayView(view, row, userId, orgRole)) {
+      // 존재 여부를 흘리지 않기 위해 권한 없음과 없음을 구분하지 않는다.
+      throw new NotFoundException('승인 요청을 찾을 수 없습니다');
+    }
+    return view;
+  }
+
+  /**
+   * 요청자 본인, 판단할 수 있는 사람, 그리고 조직 관리자만 본다.
+   * 관리자를 넣는 이유는 감사·운영이 막히면 안 되기 때문이다 —
+   * 누가 무엇을 요청했는지 조직이 아예 볼 수 없으면 거버넌스가 성립하지 않는다.
+   */
+  private mayView(
+    view: ApprovalRequestView,
+    row: RequestRow,
+    userId: string,
+    orgRole: OrganizationRole,
+  ): boolean {
+    if (orgRole === 'ORG_ADMIN') return true;
+    if (row.requesterUserId === userId) return true;
+    // 이미 판단한 사람도 계속 볼 수 있어야 한다. canDecide는 판단 후 false가 된다.
+    return view.canDecide || view.decisions.some((decision) => decision.userId === userId);
   }
 
   private async toView(row: RequestRow, viewerId: string): Promise<ApprovalRequestView> {
@@ -591,7 +638,8 @@ export class ApprovalService {
       metadata: { decision, resultStatus: nextStatus, mode: policy.mode },
     });
 
-    return this.detail(organizationId, requestId, approverUserId);
+    // 방금 판단한 본인이다. 가시성 검사를 다시 돌릴 이유가 없다.
+    return this.viewOf(organizationId, requestId, approverUserId);
   }
 
   async cancel(organizationId: string, requestId: string, userId: string) {
@@ -620,7 +668,7 @@ export class ApprovalService {
       targetType: 'approval_request',
       targetId: requestId,
     });
-    return this.detail(organizationId, requestId, userId);
+    return this.viewOf(organizationId, requestId, userId);
   }
 
   /* ---------------- 실행 ---------------- */
@@ -726,12 +774,6 @@ export class ApprovalService {
       expiresAt: row.expiresAt?.toISOString() ?? null,
       failureReason: row.failureReason,
     };
-  }
-
-  /** 승인 대기 중인 요청 수. 콘솔 배지가 쓴다. */
-  async pendingCount(organizationId: string, userId: string): Promise<number> {
-    const views = await this.list(organizationId, userId);
-    return views.filter((view) => view.status === 'PENDING').length;
   }
 
   /** 여러 요청의 상태를 한 번에. 감사 화면이 쓴다. */

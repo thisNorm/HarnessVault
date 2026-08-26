@@ -10,7 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test:e2e": "node test/identity-e2e.mjs && node test/hardening-e2e.mjs && node test/invitation-e2e.mjs && node test/embedding-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs && node test/mcp-e2e.mjs && node test/resource-e2e.mjs && node test/policy-e2e.mjs && node test/approval-e2e.mjs && node test/trace-e2e.mjs && node test/output-contract-e2e.mjs && node test/contribution-e2e.mjs && node test/curator-e2e.mjs && node test/analytics-e2e.mjs && node test/mvp-e2e.mjs",
+    "test:e2e": "node test/identity-e2e.mjs && node test/hardening-e2e.mjs && node test/invitation-e2e.mjs && node test/embedding-e2e.mjs && node test/harness-e2e.mjs && node test/resolver-e2e.mjs && node test/compiler-e2e.mjs && node test/mcp-e2e.mjs && node test/resource-e2e.mjs && node test/policy-e2e.mjs && node test/approval-e2e.mjs && node test/trace-e2e.mjs && node test/output-contract-e2e.mjs && node test/contribution-e2e.mjs && node test/curator-e2e.mjs && node test/analytics-e2e.mjs && node test/mvp-e2e.mjs && node test/scenario-approval-routing.mjs",
     "db:seed": "node test/seed.mjs",
     "setup:resources": "node test/setup-resources.mjs"
   },

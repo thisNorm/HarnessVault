@@ -350,6 +350,15 @@ check('박팀장 승인함에 뜬다', await canDecide(lead, internalRequestId),
 check('이보안에게는 권한이 없다', await canDecide(security, internalRequestId), false);
 check('김팀원 스스로도 승인 못 한다', await canDecide(member, internalRequestId), false);
 
+/** 승인함에 아예 보이는지. 권한만 막고 내용을 보여 주면 절반만 막은 것이다. */
+async function isVisible(who, requestId) {
+  const list = expectOk('승인함', await who.rest('GET', `/organizations/${orgId}/approvals`))
+    .approvals;
+  return list.some((item) => item.id === requestId);
+}
+// 요청자 본인은 자기 요청을 본다.
+check('김팀원은 자기 요청을 본다', await isVisible(member, internalRequestId), true);
+
 const leadView = expectOk(
   '요청 상세',
   await lead.rest('GET', `/organizations/${orgId}/approvals/${internalRequestId}`),
@@ -413,6 +422,18 @@ const leadTries = await lead.rest(
 );
 check('박팀장이 강제로 눌러도 거부', leadTries.status, 403);
 check('이유를 알려준다', leadTries.body.code, 'PERMISSION_DENIED');
+
+// 요청 본문에는 고객 DB를 향한 SQL이 그대로 들어 있다.
+// 결정만 막고 내용을 보여 주면 보안팀으로 라우팅한 의미가 사라진다.
+check('박팀장 승인함에 아예 안 보인다', await isVisible(lead, restrictedRequestId), false);
+check(
+  '내용도 볼 수 없다',
+  (await lead.rest('GET', `/organizations/${orgId}/approvals/${restrictedRequestId}`)).status,
+  404,
+);
+check('이보안에게는 보인다', await isVisible(security, restrictedRequestId), true);
+// 조직 관리자는 본다 — 아무도 볼 수 없으면 거버넌스가 성립하지 않는다.
+check('관리자는 전부 본다', await isVisible(admin, restrictedRequestId), true);
 
 /* ══════════════════════════════════════════════════════════ */
 step('9. 승인 전에 실행하려 하면 — 기다리라고 답한다');

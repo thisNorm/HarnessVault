@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import {
   type ApprovalDecisionInput,
   type CreateApprovalPolicyInput,
@@ -7,7 +7,11 @@ import {
 } from '@harnessvault/domain';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CurrentAuth } from '../identity/current-user.decorator';
-import { OrgScopeGuard, RequireOrgRole } from '../identity/org-scope.guard';
+import {
+  OrgScopeGuard,
+  RequireOrgRole,
+  type OrgScopedRequest,
+} from '../identity/org-scope.guard';
 import { type RequestAuth, SessionGuard } from '../identity/session.guard';
 import { ApprovalService } from './approval.service';
 
@@ -32,17 +36,26 @@ export class ApprovalController {
   }
 
   @Get('approvals')
-  async list(@CurrentAuth() auth: RequestAuth, @Param('orgId') orgId: string) {
-    return { approvals: await this.approvals.list(orgId, auth.user.id) };
+  async list(@Param('orgId') orgId: string, @Req() request: OrgScopedRequest) {
+    return {
+      approvals: await this.approvals.list(orgId, request.auth.user.id, request.orgRole),
+    };
   }
 
   @Get('approvals/:requestId')
   async detail(
-    @CurrentAuth() auth: RequestAuth,
     @Param('orgId') orgId: string,
     @Param('requestId') requestId: string,
+    @Req() request: OrgScopedRequest,
   ) {
-    return { approval: await this.approvals.detail(orgId, requestId, auth.user.id) };
+    return {
+      approval: await this.approvals.detail(
+        orgId,
+        requestId,
+        request.auth.user.id,
+        request.orgRole,
+      ),
+    };
   }
 
   @Post('approvals/:requestId/approve')
