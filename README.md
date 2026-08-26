@@ -139,6 +139,17 @@ EMBEDDING_MODEL=nomic-embed-text
 curl -X POST http://localhost:3000/organizations/<orgId>/contributions/embeddings/backfill -b harness_session=<token>
 ```
 
+## 무엇이 쓰이는지 보기
+
+`/analytics`가 자산별 주입·제외 횟수와 "한 번도 주입되지 않은 자산"을 보여준다.
+쌓기만 하고 안 쓰는 자산을 찾아 정리하는 것이 이 화면의 목적이다.
+
+기록은 Phase 13 이후의 해석부터 쌓인다. 그 전 흐름은 개수만 남아 있어 소급 복원할 수 없다.
+
+- 모든 평균에 표본 수가 함께 표시된다. 모르는 값을 0으로 세지 않았다는 뜻이다.
+- 분모가 0이면 비율을 `—`로 둔다. 0%로 표시하면 거짓이다.
+- **개인별 생산성 점수는 만들지 않는다.** 집계를 사용자로 그룹핑하지 않는다.
+
 ## Curator (선택)
 
 Candidate가 기존 자산과 어떤 관계인지 추천을 낸다. 설정하지 않으면 배선 검증용 대역이 돌고,
