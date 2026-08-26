@@ -71,17 +71,8 @@ async function rpc(actor, orgId, name, args) {
     }),
   });
   const body = await res.json();
-  if (body.error) return { isError: true, code: null, text: JSON.stringify(body.error) };
-  if (body.result?.isError) {
-    const text = body.result.content?.[0]?.text ?? '';
-    let code = null;
-    try {
-      code = JSON.parse(text).code ?? null;
-    } catch {
-      code = null;
-    }
-    return { isError: true, code, text };
-  }
+  if (body.error) return { isError: true, text: JSON.stringify(body.error) };
+  if (body.result?.isError) return { isError: true, text: body.result.content?.[0]?.text ?? '' };
   return { isError: false, data: JSON.parse(body.result.content[0].text) };
 }
 
