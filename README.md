@@ -64,11 +64,12 @@ npm run ci
 
 `typecheck → lint → test → build` 순으로 실행한다.
 
-API가 떠 있는 상태에서 Identity 전 구간을 확인한다.
-
 ```bash
 npm run test:e2e
 ```
+
+**API 서버는 알아서 띄운다.** 이미 떠 있으면 그대로 쓰고, 없으면 띄웠다가 끝나면 내린다.
+직접 띄워 둔 개발 서버는 건드리지 않는다.
 
 ## Resource 연결 (Phase 6)
 
@@ -236,16 +237,16 @@ npx playwright install chromium   # 최초 1회
 npm run test:web
 ```
 
-API 서버가 떠 있어야 한다(`npm run test:e2e`와 같은 전제). 웹 서버는 없으면 알아서 띄운다.
+API·웹 서버 둘 다 없으면 알아서 띄운다.
 
-서버가 떠 있는 상태에서 전부 한 번에 돌리려면:
+전부 한 번에 돌리려면:
 
 ```bash
 npm run verify
 ```
 
 `ci → test:e2e → test:web` 순으로 실행한다. `npm run ci`는 서버 없이 도는 것만 담고 있어
-그대로 두고, 서버가 필요한 검증은 `verify`로 묶었다.
+그대로 두고, 서버가 필요한 검증은 `verify`로 묶었다. DB만 켜져 있으면 된다(`npm run db:up`).
 
 ## 시크릿 스캔
 
