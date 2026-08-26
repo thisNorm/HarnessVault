@@ -180,7 +180,8 @@ const early = await rpc(admin.token, orgId, 'company.approval.execute', {
   approvalRequestId: requestId,
 });
 check('승인 없이 실행 거부', early.isError, true);
-check('NOT_APPROVED로 알림', early.text.includes('NOT_APPROVED'), true);
+// 아직 답이 없는 것은 실패가 아니라 대기다. 기다리라고 말해야 한다.
+check('대기 중임을 알림', early.text.includes('APPROVAL_REQUIRED'), true);
 
 console.log('\n── 3. 승인 자격 ──');
 check(
@@ -265,6 +266,10 @@ const rejectedExec = await rpc(admin.token, orgId, 'company.approval.execute', {
   approvalRequestId: rejectId,
 });
 check('거부된 요청은 실행 불가', rejectedExec.isError, true);
+// 대기와 같은 코드로 알리면 에이전트가 계속 기다린다. 사람이 거절했으면
+// 접근을 바꿔야 하므로 다른 코드여야 한다(§61).
+check('거절임을 구분해 알림', rejectedExec.text.includes('APPROVAL_REJECTED'), true);
+check('대기와 같은 코드가 아니다', rejectedExec.text.includes('APPROVAL_REQUIRED'), false);
 const stillThere = await rpc(admin.token, orgId, 'company.db.query', {
   resourceId: dbId,
   query: `select count(*)::int as c from events_summary where topic = '${topic}'`,

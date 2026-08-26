@@ -14,7 +14,7 @@ import type {
   ApproverSpec,
   CreateApprovalPolicyInput,
 } from '@harnessvault/domain';
-import { canTransitionApproval, isExecutable } from '@harnessvault/domain';
+import { canTransitionApproval, executionBlockedCode, isExecutable } from '@harnessvault/domain';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
@@ -646,8 +646,10 @@ export class ApprovalService {
       });
     }
     if (!isExecutable(row.status)) {
+      // 거절·만료·대기를 각각 다른 코드로 알린다(§61). 하나로 뭉개면 에이전트가
+      // "접근을 바꿔야 한다"와 "기다리면 된다"를 구분하지 못한다.
       throw new ConflictException({
-        code: 'NOT_APPROVED',
+        code: executionBlockedCode(row.status),
         message: `승인되지 않은 요청은 실행할 수 없습니다 (현재: ${row.status})`,
         status: row.status,
       });

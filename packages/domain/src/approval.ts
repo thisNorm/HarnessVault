@@ -61,6 +61,28 @@ export function isTerminal(status: ApprovalStatus): boolean {
   return TRANSITIONS[status].length === 0;
 }
 
+/**
+ * 실행할 수 없는 이유를 §61 실패 코드로 옮긴다.
+ *
+ * 전부 하나의 코드로 뭉개면 에이전트가 **"사람이 거절했다"와 "아직 기다려라"를
+ * 구분할 수 없다.** 거절이면 접근을 바꿔야 하고, 만료면 다시 요청하면 되고,
+ * 대기 중이면 기다리면 된다 — 다음 행동이 각각 다르다.
+ */
+export function executionBlockedCode(status: ApprovalStatus): string {
+  switch (status) {
+    case 'REJECTED':
+      return 'APPROVAL_REJECTED';
+    case 'EXPIRED':
+      return 'APPROVAL_EXPIRED';
+    case 'PENDING':
+      // 아직 답이 없다. 실패가 아니라 대기다.
+      return 'APPROVAL_REQUIRED';
+    default:
+      // EXECUTING · EXECUTED · CANCELLED · FAILED — 실행 자격의 문제가 아니다.
+      return 'NOT_EXECUTABLE';
+  }
+}
+
 /* ---------------- 승인 정책 ---------------- */
 
 export const approverSpecSchema = z
