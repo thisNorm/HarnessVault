@@ -17,6 +17,10 @@ test.describe('조직 선택', () => {
     await page.goto('/admin/organization');
 
     const selector = page.getByLabel('조직 선택');
+    // 목록이 채워지기 전에 읽으면 옵션이 모자란 채로 통과하거나 실패한다.
+    // 개수를 기다리는 단언을 먼저 걸어 경쟁을 없앤다.
+    await expect(selector.locator('option')).toHaveCount(2);
+
     // **기본값이 아닌 것**을 고른다. 목록 순서를 가정하고 고르면 되돌아가도
     // 같은 값이라 테스트가 우연히 통과한다 — 실제로 그렇게 한 번 속았다.
     const values = await selector.locator('option').evaluateAll((options) =>
@@ -50,7 +54,10 @@ test.describe('조직 선택', () => {
     await signIn(page, account);
     await page.goto('/admin/organization');
 
-    const options = await page.getByLabel('조직 선택').locator('option').allTextContents();
+    const optionLocator = page.getByLabel('조직 선택').locator('option');
+    // 목록이 채워질 때까지 기다린다. 바로 읽으면 흔들린다.
+    await expect(optionLocator).toHaveCount(2);
+    const options = await optionLocator.allTextContents();
     const duplicated = options.filter((label) => label.startsWith('같은 이름'));
     expect(duplicated).toHaveLength(2);
     // 붙이지 않으면 선택기에 똑같은 항목이 둘 보이고 무엇을 고르는지 알 수 없다.
@@ -67,7 +74,9 @@ test.describe('조직 선택', () => {
     await signIn(page, account);
     await page.goto('/admin/organization');
 
-    const options = await page.getByLabel('조직 선택').locator('option').allTextContents();
+    const optionLocator = page.getByLabel('조직 선택').locator('option');
+    await expect(optionLocator).toHaveCount(2);
+    const options = await optionLocator.allTextContents();
     // 매번 slug를 달면 목록이 소음이 된다.
     expect(options).toContain('유일한 이름');
     expect(options).toContain('다른 이름');

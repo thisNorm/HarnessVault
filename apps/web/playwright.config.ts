@@ -12,8 +12,9 @@ export default defineConfig({
   // 콘솔은 서버 상태를 공유하므로 순서를 섞지 않는다.
   fullyParallel: false,
   workers: 1,
-  // 실패한 테스트만 한 번 다시 본다. 여러 번 재시도하면 흔들리는 테스트를 감추게 된다.
-  retries: process.env.CI ? 1 : 0,
+  // 재시도하지 않는다. 흔들리는 테스트를 감추면 없는 것보다 나쁘다 —
+  // 실제로 한 번 감출 뻔했고, 원인은 목록이 채워지기 전에 읽는 경쟁이었다.
+  retries: 0,
   timeout: 30_000,
   expect: { timeout: 10_000 },
   reporter: [['list']],

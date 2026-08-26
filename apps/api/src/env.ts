@@ -43,6 +43,14 @@ export const envSchema = z.object({
    */
   LOGIN_MAX_ACCOUNTS_PER_IP: z.coerce.number().int().positive().default(20),
   /**
+   * 스프레이로 표시된 IP에서도 (IP, 계정) 쌍마다 **확인을 거쳐 주는** 횟수.
+   *
+   * 0으로 두면 오타 한 번 낸 사람이 맞는 비밀번호로도 막힌다.
+   * 이 유예 안에서 제대로 치면 언제나 들어간다 — 공격자는 계정당 이 횟수만큼만
+   * scrypt를 태울 수 있다. 계정 축의 10회보다 훨씬 적다.
+   */
+  LOGIN_VERIFY_GRACE_PER_PAIR: z.coerce.number().int().positive().default(3),
+  /**
    * `X-Forwarded-For`를 믿을지. **기본은 믿지 않는다.**
    * 프록시가 없는데 믿으면 공격자가 요청마다 다른 IP를 적어 제한을 무력화한다.
    * 반대로 프록시가 있는데 안 믿으면 모든 요청이 프록시 IP 하나로 묶여

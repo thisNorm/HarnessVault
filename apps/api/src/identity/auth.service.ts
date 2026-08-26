@@ -87,10 +87,26 @@ export class AuthService {
     const key = throttleKey(input.email);
     const now = new Date();
 
+    const windowStart = new Date(now.getTime() - env.LOGIN_LOCKOUT_MINUTES * 60_000);
+
     // 계정 축은 확인 **전에** 막는다. 확인하면 그 시간 차이가 계정 존재의 신호가 된다.
     const attempt = await this.loadAttempt(key);
     const accountLock = lockRemainingSeconds(attempt, now);
     if (accountLock !== null) throw this.tooManyAttempts(accountLock);
+
+    // IP 축도 확인 전에 막아야 의미가 있다. 확인한 뒤에 막으면 공격자의 시도 속도도
+    // 우리가 태우는 scrypt 비용도 그대로고, 401이 429로 바뀌기만 한다.
+    //
+    // 다만 무조건 막으면 NAT 뒤 사무실이 통째로 잠긴다. 그래서 **이 IP가 이 계정으로
+    // 유예 횟수를 넘겨 실패했을 때만** 막는다.
+    //   - 공격자: 계정당 확인 3회로 줄어든다. 계정 축의 10회를 쓰지 못한다.
+    //   - 정상 사용자: 유예 안에서 제대로 치면 언제나 통과한다.
+    if (ip && (await this.pairExhausted(ip, input.email, windowStart))) {
+      // 어느 축에 걸렸는지 알려주지 않는다 — 알려주면 IP를 바꾸면 된다는 것을 배운다.
+      if (await this.sprayingFromIp(ip, windowStart)) {
+        throw this.tooManyAttempts(env.LOGIN_LOCKOUT_MINUTES * 60);
+      }
+    }
 
     const [found] = await this.database.db
       .select()
@@ -102,16 +118,6 @@ export class AuthService {
     const valid = found ? await verifyPassword(input.password, found.passwordHash) : false;
     if (!found || !valid) {
       await this.recordFailures(key, attempt, ip, input.email, now);
-      // IP 축은 **여기서만** 본다. 확인 전에 막으면 비밀번호가 맞는 사람까지 잠긴다 —
-      // NAT 뒤 사무실 하나가 통째로 로그인하지 못하게 되는 것이 이 축이 막으려던
-      // 공격보다 큰 피해다. 맞는 자격증명은 IP와 무관하게 통과한다.
-      if (ip) {
-        const windowStart = new Date(now.getTime() - env.LOGIN_LOCKOUT_MINUTES * 60_000);
-        // 어느 축에 걸렸는지 알려주지 않는다 — 알려주면 IP를 바꾸면 된다는 것을 배운다.
-        if (await this.sprayingFromIp(ip, windowStart)) {
-          throw this.tooManyAttempts(env.LOGIN_LOCKOUT_MINUTES * 60);
-        }
-      }
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
     if (found.status !== 'ACTIVE') {
@@ -232,6 +238,22 @@ export class AuthService {
         target: loginAttempts.email,
         set: { failedCount: sql`${loginAttempts.failedCount} + 1`, lastFailedAt: now },
       });
+  }
+
+  /**
+   * 이 IP가 이 계정으로 창 안에 유예 횟수를 다 썼는가.
+   *
+   * 기본키 조회 한 번이다. 이게 맞을 때만 무거운 집계로 넘어가므로
+   * 정상 사용자는 스프레이 판정 비용을 내지 않는다.
+   */
+  private async pairExhausted(ip: string, email: string, since: Date): Promise<boolean> {
+    const [row] = await this.database.db
+      .select({ failedCount: loginAttempts.failedCount, lastFailedAt: loginAttempts.lastFailedAt })
+      .from(loginAttempts)
+      .where(eq(loginAttempts.email, ipPairKey(ip, email)))
+      .limit(1);
+    if (!row || row.lastFailedAt < since) return false;
+    return row.failedCount >= getEnv().LOGIN_VERIFY_GRACE_PER_PAIR;
   }
 
   /** 창 안에 이 IP가 실패시킨 **서로 다른 계정 수**가 임계를 넘었는가. */

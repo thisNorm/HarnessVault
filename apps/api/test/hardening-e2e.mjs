@@ -126,32 +126,91 @@ console.log('\n── IP 축은 여러 계정을 훑는 공격을 잡는다 ─�
 // 횟수로 세면 NAT 뒤 사무실 20명의 정상 오타와 스프레이가 같은 숫자로 보이고,
 // 어떤 임계값을 잡아도 사무실을 잠그거나 공격자를 놓치거나 둘 중 하나가 된다.
 const IP_MAX = Number(process.env.LOGIN_MAX_ACCOUNTS_PER_IP ?? 20);
-const sprayed = [];
-for (let i = 0; i < IP_MAX + 2; i++) {
-  // 계정마다 한 번씩만 두드린다 — 계정 축은 건드리지 않는다.
-  const res = await post('/auth/login', {
-    email: `spray-${stamp}-${i}@example.com`,
-    password: WRONG,
-  });
-  sprayed.push(res.status);
+
+/** 스프레이를 흉내낸다 — 계정마다 한 번씩만 두드려 계정 축은 건드리지 않는다. */
+async function spray(count) {
+  const statuses = [];
+  for (let i = 0; i < count; i++) {
+    const res = await post('/auth/login', {
+      email: `spray-${stamp}-${i}@example.com`,
+      password: WRONG,
+    });
+    statuses.push(res.status);
+  }
+  return statuses;
 }
-check('임계 전에는 통과한다', sprayed[0], 401);
-// TRUST_PROXY가 꺼져 있어도 소켓 주소로 IP를 얻으므로 이 경로는 항상 돈다.
-check('계정 수 임계를 넘으면 막힌다', sprayed.includes(429), true);
-// 어느 축에 걸렸는지 알려주면 공격자는 IP를 바꾸면 된다는 것을 배운다.
+
+const GRACE = Number(process.env.LOGIN_VERIFY_GRACE_PER_PAIR ?? 3);
+
+// 유예 안에서는 계정마다 확인을 거친다. 그래야 오타 낸 정상 사용자가 걸리지 않는다.
+for (let round = 0; round < GRACE; round++) {
+  const statuses = await spray(IP_MAX + 2);
+  check(`유예 ${round + 1}회차는 통과`, statuses.every((status) => status === 401), true);
+}
+
+// 유예를 다 쓰면 확인 없이 막힌다.
+const exhausted = await spray(IP_MAX + 2);
+check('유예를 넘기면 막힌다', exhausted.every((status) => status === 429), true);
+
 const sprayLocked = await post('/auth/login', {
-  email: `spray-${stamp}-final@example.com`,
+  email: `spray-${stamp}-0@example.com`,
   password: WRONG,
 });
+// 어느 축에 걸렸는지 알려주면 공격자는 IP를 바꾸면 된다는 것을 배운다.
 check('계정 잠금과 같은 코드', sprayLocked.body.code, 'TOO_MANY_ATTEMPTS');
 
-// **이것이 이 축의 전제다.** 확인 전에 막으면 NAT 뒤 사무실 하나가 통째로
+console.log('\n── 막는 지점이 비밀번호 확인 **전**이어야 한다 ──');
+// 확인한 뒤에 막으면 공격자의 시도 속도도 우리가 태우는 scrypt 비용도 그대로다.
+// 401이 429로 바뀌기만 하는 장식이 된다.
+//
+// 확인을 건너뛰면 응답이 눈에 띄게 빨라진다 — scrypt가 가장 비싼 구간이기 때문이다.
+async function timeLogin(email, password) {
+  const started = process.hrtime.bigint();
+  await post('/auth/login', { email, password });
+  return Number(process.hrtime.bigint() - started) / 1e6;
+}
+
+const fresh = `spray-${stamp}-fresh@example.com`;
+// 확인을 거치는 경로: 아직 쌍 기록이 없는 새 계정.
+const verified = await timeLogin(fresh, WRONG);
+// 유예를 소진시킨다.
+for (let i = 1; i < GRACE; i++) await timeLogin(fresh, WRONG);
+// 막히는 경로: 유예를 다 썼으므로 확인 없이 거절된다.
+const shortCircuited = await timeLogin(fresh, WRONG);
+console.log(`  확인 경로 ${verified.toFixed(1)}ms · 차단 경로 ${shortCircuited.toFixed(1)}ms`);
+check('차단이 확인보다 빠르다', shortCircuited < verified, true);
+
+console.log('\n── 정상 사용자는 걸리지 않는다 ──');
+// **이것이 이 축의 전제다.** 무조건 막으면 NAT 뒤 사무실 하나가 통째로
 // 로그인하지 못하게 되고, 그 피해가 막으려던 공격보다 크다.
-const goodLoginWhileSprayed = await post('/auth/login', {
-  email: other.email,
-  password: other.password,
+//
+// 오타를 한 번 낸 사람도 유예 안이라면 맞는 비밀번호로 들어가야 한다.
+const typoUser = {
+  email: `typo-${stamp}@example.com`,
+  password: randomBytes(18).toString('base64url'),
+  displayName: '오타 낸 사람',
+};
+await post('/auth/register', typoUser);
+const typo = await post('/auth/login', { email: typoUser.email, password: WRONG });
+check('오타는 401', typo.status, 401);
+const afterTypo = await post('/auth/login', {
+  email: typoUser.email,
+  password: typoUser.password,
 });
-check('IP가 잠겨도 맞는 비밀번호는 통과한다', goodLoginWhileSprayed.status, 200);
+check('오타 뒤에도 맞는 비밀번호는 통과', afterTypo.status, 200);
+
+// 처음에 제대로 치는 사람은 쌍 기록이 없으므로 확인조차 건너뛰지 않는다.
+const newcomer = {
+  email: `office-${stamp}@example.com`,
+  password: randomBytes(18).toString('base64url'),
+  displayName: '같은 사무실 사람',
+};
+await post('/auth/register', newcomer);
+const firstTry = await post('/auth/login', {
+  email: newcomer.email,
+  password: newcomer.password,
+});
+check('같은 IP의 새 사용자도 첫 시도에 로그인된다', firstTry.status, 200);
 
 console.log('\n── 세션 정리 ──');
 try {
