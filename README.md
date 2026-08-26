@@ -54,6 +54,10 @@ SEED_EMAIL=test@test.com SEED_PASSWORD=1234 npm run db:seed
 
 ## 검증
 
+`npm run test:e2e`의 마지막 스위트(`mvp-e2e.mjs`)가 전체 흐름을 한 번에 돈다 —
+가입부터 다른 사용자가 다른 AI로 재사용하기까지. Mock으로 대체된 구간은 없다:
+실제 파일을 읽고, 실제 PostgreSQL에 행을 넣고, 다른 계정이 실제로 승인한다.
+
 ```bash
 npm run ci
 ```
