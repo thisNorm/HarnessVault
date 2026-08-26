@@ -3,6 +3,7 @@ import { ApprovalModule } from './approval/approval.module';
 import { AuditModule } from './audit/audit.module';
 import { CompilerModule } from './compiler/compiler.module';
 import { ContributionModule } from './contribution/contribution.module';
+import { CuratorModule } from './curator/curator.module';
 import { DatabaseModule } from './db/database.module';
 import { HarnessModule } from './harness/harness.module';
 import { HealthModule } from './health/health.module';
@@ -27,6 +28,7 @@ import { TraceModule } from './trace/trace.module';
     ResourceModule,
     OutputContractModule,
     ContributionModule,
+    CuratorModule,
     TraceModule,
     McpModule,
     HealthModule,

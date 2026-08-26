@@ -57,6 +57,13 @@
       "when": 1787637658248,
       "tag": "0007_clumsy_princess_powerful",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787703928438,
+      "tag": "0008_typical_thundra",
+      "breakpoints": true
     }
   ]
 }

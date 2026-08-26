@@ -356,6 +356,29 @@ export interface ContributionSummary {
   createdAt: string;
 }
 
+/* ---- Curator (Phase 12) ---- */
+
+export interface CuratorRunView {
+  id: string;
+  contributionId: string;
+  status: 'SUCCEEDED' | 'FAILED';
+  /** 실제 모델인지 배선 검증용 대역인지. 화면에서 숨기지 않는다(§72). */
+  provider: 'MOCK' | 'OLLAMA';
+  model: string;
+  complexity: 'LOW' | 'MEDIUM' | 'HIGH';
+  roundsUsed: number;
+  verdict: 'DUPLICATE' | 'VARIANT_OF' | 'IMPROVEMENT_ON' | 'CONFLICTS_WITH' | 'NEW' | 'UNKNOWN' | null;
+  relatedAssetId: string | null;
+  relatedAssetKey: string | null;
+  confidence: number | null;
+  reasoning: string;
+  suggestedValidations: string[];
+  failureCode: string | null;
+  failureMessage: string;
+  durationMs: number;
+  createdAt: string;
+}
+
 /* ---- Output Contract (Phase 10) ---- */
 
 export interface ResolvedOutputContract {

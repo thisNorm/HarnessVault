@@ -33,6 +33,12 @@ export const envSchema = z.object({
   EMBEDDING_URL: z.url().optional(),
   EMBEDDING_MODEL: z.string().default('nomic-embed-text'),
   EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+
+  // Curator도 선택이다. 없으면 배선 검증용 대역이 돌고, 결과에 MOCK이 박힌다(§72).
+  CURATOR_URL: z.url().optional(),
+  CURATOR_MODEL: z.string().default('qwen3:4b'),
+  // 로컬 모델은 느리다. 임베딩보다 넉넉하게 준다.
+  CURATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

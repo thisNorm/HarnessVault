@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ApiError, api, post, type ContributionSummary } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
+import { CuratorPanel } from '@/components/curator-panel';
 import { useOrgId } from '@/components/session';
 import {
   Badge,
@@ -92,6 +93,7 @@ export default function CandidatesPage() {
                 {waiting.map((item) => (
                   <li key={item.id} className="px-4 py-4">
                     <Summary item={item} />
+                    <CuratorPanel orgId={orgId} contributionId={item.id} />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Input
                         placeholder="검토 의견 (거절에는 필수)"

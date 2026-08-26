@@ -9,3 +9,4 @@ export * from './approval';
 export * from './trace';
 export * from './output-contract';
 export * from './contribution';
+export * from './curator';
