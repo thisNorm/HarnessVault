@@ -20,6 +20,7 @@ const NAV: { label: string; items: { href: string; label: string; icon: ReactNod
     items: [
       { href: '/approvals', label: '승인함', icon: <IconApproval /> },
       { href: '/traces', label: 'Traces', icon: <IconTrace /> },
+      { href: '/analytics', label: 'Analytics', icon: <IconAnalytics /> },
     ],
   },
   {
@@ -236,6 +237,16 @@ function IconCandidate() {
       <path d="M8 13V4" strokeLinecap="round" />
       <path d="M4.5 7.5 8 4l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M3 2.5h10" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** 분석 — 막대 그래프. */
+function IconAnalytics() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4">
+      <path d="M2.5 13.5h11" strokeLinecap="round" />
+      <path d="M4.5 11V7.5M8 11V3.5M11.5 11V6" strokeLinecap="round" />
     </svg>
   );
 }

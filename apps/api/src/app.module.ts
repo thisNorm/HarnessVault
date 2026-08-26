@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { ApprovalModule } from './approval/approval.module';
 import { AuditModule } from './audit/audit.module';
 import { CompilerModule } from './compiler/compiler.module';
@@ -29,6 +30,7 @@ import { TraceModule } from './trace/trace.module';
     OutputContractModule,
     ContributionModule,
     CuratorModule,
+    AnalyticsModule,
     TraceModule,
     McpModule,
     HealthModule,

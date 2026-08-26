@@ -356,6 +356,79 @@ export interface ContributionSummary {
   createdAt: string;
 }
 
+/* ---- Analytics (Phase 13) ---- */
+
+export interface CountBucket {
+  key: string;
+  label: string;
+  count: number;
+}
+
+/** 평균에는 늘 표본 수가 따라붙는다. 모르는 값을 0으로 세지 않았다는 증거다(§40). */
+export interface AverageWithSampleSize {
+  value: number | null;
+  sampleSize: number;
+  totalCandidates: number;
+}
+
+export interface AssetUsageRow {
+  assetId: string;
+  key: string;
+  name: string;
+  type: string;
+  scope: string;
+  selectedCount: number;
+  excludedCount: number;
+  selectionRate: number | null;
+  topExclusionReason: string | null;
+}
+
+/** 어떤 필드도 사용자로 그룹핑하지 않는다 — 개인별 생산성 점수를 만들지 않는다(§57). */
+export interface AnalyticsBundle {
+  overview: {
+    days: number | null;
+    assetsByType: CountBucket[];
+    assetsByScope: CountBucket[];
+    assetsByStatus: CountBucket[];
+    totalAssets: number;
+    totalTraces: number;
+    totalContributions: number;
+  };
+  assetUsage: AssetUsageRow[];
+  unusedAssets: Array<{ assetId: string; key: string; name: string; type: string }>;
+  capabilities: CountBucket[];
+  contextEfficiency: {
+    averageCandidates: AverageWithSampleSize;
+    averageSelected: AverageWithSampleSize;
+    averageReductionPercent: AverageWithSampleSize;
+    averageInjectedTokens: AverageWithSampleSize;
+    averageClientReportedInputTokens: AverageWithSampleSize;
+  };
+  outputContract: {
+    completedTraces: number;
+    satisfiedCount: number;
+    satisfiedRate: number | null;
+    mostMissedFields: CountBucket[];
+  };
+  approvals: {
+    byStatus: CountBucket[];
+    averageDecisionSeconds: AverageWithSampleSize;
+  };
+  contributions: {
+    byStatus: CountBucket[];
+    promotedRate: number | null;
+    duplicateFlaggedCount: number;
+  };
+  curator: {
+    byVerdict: CountBucket[];
+    byProvider: CountBucket[];
+    byComplexity: CountBucket[];
+    failedCount: number;
+    totalRuns: number;
+    averageDurationMs: AverageWithSampleSize;
+  };
+}
+
 /* ---- Curator (Phase 12) ---- */
 
 export interface CuratorRunView {

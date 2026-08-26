@@ -4,13 +4,14 @@ import type {
   ModelSource,
   TraceDetail,
   TraceSummary,
+  ResolvedHarnessManifest,
 } from '@harnessvault/domain';
 import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
 import { checkOutputAgainstContract } from '@harnessvault/domain';
 import { AuditService } from '../audit/audit.service';
 import { OutputContractService } from '../output-contract/output-contract.service';
 import { DatabaseService } from '../db/database.service';
-import { auditEvents, projects, taskTraces, users } from '../db/schema';
+import { auditEvents, projects, taskTraces, traceAssetUsage, users } from '../db/schema';
 
 type TraceRow = typeof taskTraces.$inferSelect;
 
@@ -75,6 +76,50 @@ export class TraceService {
         harnessInputTokens: stats.estimatedInjectedTokens,
       })
       .where(eq(taskTraces.id, traceId));
+  }
+
+  /**
+   * 해석에 오른 자산을 한 줄씩 남긴다. 선택된 것도 제외된 것도 남긴다.
+   *
+   * 개수만으로는 "어느 자산이 실제로 쓰이는가"에 답할 수 없다.
+   * 제외 이력이 더 중요하다 — 계속 후보에 오르는데 매번 밀리는 자산은 쪼개야 한다는 신호다.
+   */
+  async recordAssetUsage(traceId: string, manifest: ResolvedHarnessManifest): Promise<void> {
+    const selected = [
+      ...manifest.rules,
+      ...manifest.policies,
+      ...manifest.validations,
+      ...manifest.workflows,
+      ...manifest.skills,
+      ...manifest.variants,
+      ...manifest.scripts,
+      ...manifest.templates,
+      ...manifest.knowledge,
+    ];
+
+    const rows = [
+      ...selected.map((ref) => ({
+        traceId,
+        assetId: ref.assetId,
+        versionId: ref.versionId,
+        selected: true,
+        reasonCode: ref.reasonCode,
+        assetType: ref.type,
+        scopeType: ref.scope,
+      })),
+      ...manifest.excluded.map((ref) => ({
+        traceId,
+        assetId: ref.assetId,
+        versionId: null,
+        selected: false,
+        reasonCode: ref.reasonCode,
+        assetType: ref.type,
+        scopeType: ref.scope,
+      })),
+    ];
+    if (rows.length === 0) return;
+
+    await this.database.db.insert(traceAssetUsage).values(rows);
   }
 
   /**

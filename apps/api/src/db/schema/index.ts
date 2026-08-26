@@ -10,3 +10,4 @@ export * from './trace';
 export * from './output-contract';
 export * from './contribution';
 export * from './curator';
+export * from './analytics';

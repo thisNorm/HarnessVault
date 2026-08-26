@@ -147,6 +147,9 @@ export class ResolverService {
         outputContract,
       });
 
+      // 어느 자산이 실제로 주입됐는지 남긴다. 개수만으로는 사용량을 알 수 없다.
+      await this.traces.recordAssetUsage(traceId, manifest);
+
       await this.traces.recordResolution(traceId, {
         candidateCount: manifest.resolution.candidateCount,
         selectedCount: manifest.resolution.selectedCount,
