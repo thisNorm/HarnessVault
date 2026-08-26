@@ -16,7 +16,7 @@ import {
 } from '@harnessvault/domain';
 import type { CookieOptions, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { getEnv } from '../env';
+import { cookieSecure, getEnv } from '../env';
 import { AuthService } from './auth.service';
 import { CurrentAuth } from './current-user.decorator';
 import { SESSION_COOKIE_NAME } from './session-token';
@@ -35,10 +35,13 @@ const registerSchema = makeRegisterInputSchema(
 type RegisterBody = ReturnType<typeof registerSchema.parse>;
 
 function sessionCookieOptions(expires?: Date): CookieOptions {
+  const env = getEnv();
   return {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: getEnv().NODE_ENV === 'production',
+    // 웹과 API 도메인이 갈리는 배포에서는 none이 필요하다. env가 조합을 검증한다.
+    sameSite: env.SESSION_COOKIE_SAMESITE,
+    secure: cookieSecure(env),
+    ...(env.SESSION_COOKIE_DOMAIN ? { domain: env.SESSION_COOKIE_DOMAIN } : {}),
     path: '/',
     expires,
   };

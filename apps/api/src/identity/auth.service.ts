@@ -1,10 +1,22 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { LoginInput, PublicUser, RegisterInput } from '@harnessvault/domain';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../db/database.service';
-import { organizationMemberships, organizations, sessions, users } from '../db/schema';
+import { loginAttempts, organizationMemberships, organizations, sessions, users } from '../db/schema';
 import { getEnv } from '../env';
+import {
+  lockRemainingSeconds,
+  nextAfterFailure,
+  throttleKey,
+  type AttemptRecord,
+} from './login-throttle';
 import { hashPassword, verifyPassword } from './password';
 import { generateSessionToken, hashSessionToken } from './session-token';
 
@@ -65,6 +77,23 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<{ user: PublicUser; session: IssuedSession }> {
+    const key = throttleKey(input.email);
+    const now = new Date();
+
+    // 잠겨 있으면 비밀번호를 확인조차 하지 않는다. 확인하면 그 시간 차이가 신호가 된다.
+    const attempt = await this.loadAttempt(key);
+    const remaining = lockRemainingSeconds(attempt, now);
+    if (remaining !== null) {
+      throw new HttpException(
+        {
+          code: 'TOO_MANY_ATTEMPTS',
+          message: `로그인 시도가 너무 많습니다. ${Math.ceil(remaining / 60)}분 후 다시 시도하세요`,
+          retryAfterSeconds: remaining,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const [found] = await this.database.db
       .select()
       .from(users)
@@ -74,11 +103,17 @@ export class AuthService {
     // 사용자 없음과 비밀번호 불일치를 구분해 알려주지 않는다.
     const valid = found ? await verifyPassword(input.password, found.passwordHash) : false;
     if (!found || !valid) {
+      await this.recordFailure(key, attempt, now);
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
     if (found.status !== 'ACTIVE') {
+      // 비활성 계정도 실패로 센다. 세지 않으면 무제한으로 두드릴 수 있다.
+      await this.recordFailure(key, attempt, now);
       throw new UnauthorizedException('비활성화된 계정입니다');
     }
+
+    // 성공하면 즉시 지운다. 오타 몇 번이 다음 로그인까지 따라다니지 않게 한다.
+    await this.database.db.delete(loginAttempts).where(eq(loginAttempts.email, key));
 
     const session = await this.issueSession(found.id);
     await this.audit.record({
@@ -140,6 +175,50 @@ export class AuthService {
       .innerJoin(organizations, eq(organizations.id, organizationMemberships.organizationId))
       .where(eq(organizationMemberships.userId, userId))
       .orderBy(organizations.name);
+  }
+
+  private async loadAttempt(key: string): Promise<AttemptRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(loginAttempts)
+      .where(eq(loginAttempts.email, key))
+      .limit(1);
+    return row
+      ? { failedCount: row.failedCount, lockedUntil: row.lockedUntil, lastFailedAt: row.lastFailedAt }
+      : null;
+  }
+
+  /**
+   * 실패를 기록한다. 키는 제출된 이메일 문자열이라 **존재하지 않는 계정도 똑같이 잠긴다** —
+   * 잠기는지 여부로 계정 존재가 새어 나가지 않게 하기 위해서다.
+   */
+  private async recordFailure(
+    key: string,
+    current: AttemptRecord | null,
+    now: Date,
+  ): Promise<void> {
+    const env = getEnv();
+    const next = nextAfterFailure(
+      current,
+      { maxAttempts: env.LOGIN_MAX_ATTEMPTS, lockoutMinutes: env.LOGIN_LOCKOUT_MINUTES },
+      now,
+    );
+    await this.database.db
+      .insert(loginAttempts)
+      .values({
+        email: key,
+        failedCount: next.failedCount,
+        lockedUntil: next.lockedUntil,
+        lastFailedAt: next.lastFailedAt,
+      })
+      .onConflictDoUpdate({
+        target: loginAttempts.email,
+        set: {
+          failedCount: next.failedCount,
+          lockedUntil: next.lockedUntil,
+          lastFailedAt: next.lastFailedAt,
+        },
+      });
   }
 
   /** 만료됐거나 폐기된 세션 행을 지운다. 운영 중 주기 실행을 염두에 둔 유지보수용이다. */

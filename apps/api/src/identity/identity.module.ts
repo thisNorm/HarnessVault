@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OrgScopeGuard } from './org-scope.guard';
+import { SessionPurgeService } from './session-purge.service';
 import { OrganizationController } from './organization.controller';
 import { OrganizationService } from './organization.service';
 import { SessionGuard } from './session.guard';
@@ -10,7 +11,14 @@ import { WorkspaceService } from './workspace.service';
 
 @Module({
   controllers: [AuthController, OrganizationController, WorkspaceController],
-  providers: [AuthService, OrganizationService, WorkspaceService, SessionGuard, OrgScopeGuard],
+  providers: [
+    AuthService,
+    OrganizationService,
+    WorkspaceService,
+    SessionGuard,
+    OrgScopeGuard,
+    SessionPurgeService,
+  ],
   exports: [AuthService, SessionGuard, OrgScopeGuard],
 })
 export class IdentityModule {}
