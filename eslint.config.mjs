@@ -24,6 +24,12 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    // Playwright 스크립트는 page.evaluate 안에서 브라우저 전역을 쓴다.
+    // Node 전역만 주면 그 블록이 전부 no-undef로 잡힌다.
+    files: ['apps/web/e2e/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,

@@ -13,28 +13,29 @@ import {
   ErrorState,
   LoadingState,
   PageHeader,
+  type Tone,
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  OPEN: 'pending',
-  COMPLETED: 'active',
-  FAILED: 'deny',
-  CANCELLED: 'locked',
+  OPEN: 'warn',
+  COMPLETED: 'ok',
+  FAILED: 'danger',
+  CANCELLED: 'neutral',
 } as const;
 
 /** 이벤트 종류별 색. 승인·거부처럼 사람이 개입한 지점이 눈에 띄어야 한다. */
-const EVENT_TONE: Record<string, 'active' | 'pending' | 'deny' | 'accent' | 'locked'> = {
+const EVENT_TONE: Record<string, Tone> = {
   'harness.resolved': 'accent',
   'harness.compiled': 'accent',
-  'harness.resolution_conflict': 'deny',
-  'policy.evaluated': 'locked',
+  'harness.resolution_conflict': 'danger',
+  'policy.evaluated': 'neutral',
   'resource.accessed': 'accent',
-  'resource.access_failed': 'deny',
-  'approval.requested': 'pending',
-  'approval.decided': 'active',
-  'approval.executed': 'active',
-  'approval.failed': 'deny',
-  'task.completed': 'active',
+  'resource.access_failed': 'danger',
+  'approval.requested': 'warn',
+  'approval.decided': 'ok',
+  'approval.executed': 'ok',
+  'approval.failed': 'danger',
+  'task.completed': 'ok',
 };
 
 export default function TraceDetailPage({ params }: { params: Promise<{ traceId: string }> }) {
@@ -91,12 +92,12 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
                     ) : null}
                     <span
                       className={`relative z-10 mt-1.5 size-[11px] shrink-0 rounded-full border-2 border-bg ${
-                        EVENT_TONE[event.eventType] === 'deny'
-                          ? 'bg-state-deny'
-                          : EVENT_TONE[event.eventType] === 'pending'
-                            ? 'bg-state-pending'
-                            : EVENT_TONE[event.eventType] === 'active'
-                              ? 'bg-state-active'
+                        EVENT_TONE[event.eventType] === 'danger'
+                          ? 'bg-danger'
+                          : EVENT_TONE[event.eventType] === 'warn'
+                            ? 'bg-warn'
+                            : EVENT_TONE[event.eventType] === 'ok'
+                              ? 'bg-ok'
                               : 'bg-accent'
                       }`}
                       aria-hidden
@@ -128,7 +129,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
         <div className="flex flex-col gap-4">
           <Card className="h-fit">
             <CardHeader title="흐름 정보" />
-            <dl className="divide-y divide-border text-sm">
+            <dl className="divide-y divide-line text-sm">
               <Row label="Status">
                 <Badge tone={STATUS_TONE[item.status]}>{item.status}</Badge>
               </Row>
@@ -176,10 +177,10 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
                 {item.outputContractSatisfied === null ? (
                   <span className="text-xs text-fg-subtle">—</span>
                 ) : item.outputContractSatisfied ? (
-                  <Badge tone="active">충족</Badge>
+                  <Badge tone="ok">충족</Badge>
                 ) : (
                   <>
-                    <Badge tone="deny">미충족</Badge>
+                    <Badge tone="danger">미충족</Badge>
                     {/* 빠진 사실을 감추지 않는다. 계약이 장식이 되지 않게 한다. */}
                     <span className="mt-1 block font-mono text-2xs text-fg-subtle">
                       {(item.missingOutputFields ?? []).join(', ')}
@@ -192,7 +193,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
 
           <Card className="h-fit">
             <CardHeader title="Context 효율" description="전부 추정치입니다" />
-            <dl className="divide-y divide-border text-sm">
+            <dl className="divide-y divide-line text-sm">
               <Row label="후보 → 선택">
                 <span className="font-mono text-xs">
                   {item.candidateAssetCount === null
@@ -223,7 +224,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ traceId:
 
           <Card className="h-fit">
             <CardHeader title="토큰" description="갈래마다 신뢰도가 다릅니다" />
-            <dl className="divide-y divide-border text-sm">
+            <dl className="divide-y divide-line text-sm">
               <Row label="Harness (추정)">
                 <span className="font-mono text-xs">
                   {item.harnessInputTokens === null ? '—' : `~${item.harnessInputTokens}`}
@@ -271,7 +272,7 @@ function EventDetail({ metadata }: { metadata: Record<string, unknown> }) {
       {entries.slice(0, 8).map(([key, value]) => (
         <span
           key={key}
-          className="rounded-xs border border-border bg-bg-raised px-1.5 py-0.5 font-mono text-2xs text-fg-muted"
+          className="rounded-sm border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-muted"
         >
           {key}: {typeof value === 'object' ? JSON.stringify(value).slice(0, 60) : String(value).slice(0, 60)}
         </span>

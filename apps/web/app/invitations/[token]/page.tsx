@@ -91,7 +91,7 @@ export default function AcceptInvitationPage({
         title={`${invitation.organizationName}에 초대되었습니다`}
         description="수락하면 이 조직의 Harness와 자산에 접근할 수 있습니다."
       />
-      <dl className="divide-y divide-border text-sm">
+      <dl className="divide-y divide-line text-sm">
         <div className="flex items-center justify-between px-4 py-2.5">
           <dt className="text-2xs tracking-wide text-fg-subtle uppercase">조직</dt>
           <dd className="text-fg">{invitation.organizationName}</dd>
@@ -108,10 +108,10 @@ export default function AcceptInvitationPage({
         </div>
       </dl>
 
-      <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-t border-line px-4 py-3">
         {blocked ? (
           <>
-            <Badge tone="locked">{invitation.status}</Badge>
+            <Badge tone="neutral">{invitation.status}</Badge>
             <span className="text-xs text-fg-muted">
               {STATUS_MESSAGE[invitation.status as keyof typeof STATUS_MESSAGE]}
             </span>

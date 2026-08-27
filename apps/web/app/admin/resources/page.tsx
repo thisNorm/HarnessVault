@@ -22,10 +22,10 @@ const TYPES = ['FILE_SYSTEM', 'DATABASE', 'GIT', 'INTERNAL_API'] as const;
 const CLASSIFICATIONS = ['PUBLIC', 'INTERNAL', 'RESTRICTED', 'HIGHLY_RESTRICTED'] as const;
 
 const CLASSIFICATION_TONE = {
-  PUBLIC: 'active',
+  PUBLIC: 'ok',
   INTERNAL: 'accent',
-  RESTRICTED: 'pending',
-  HIGHLY_RESTRICTED: 'deny',
+  RESTRICTED: 'warn',
+  HIGHLY_RESTRICTED: 'danger',
 } as const;
 
 interface Team {
@@ -163,7 +163,7 @@ export default function ResourcesPage() {
         <Card>
           <CardHeader
             title="Resource 목록"
-            description={resources.data ? `${resources.data.length}개` : undefined}
+            count={resources.data?.length}
           />
           {resources.loading ? (
             <LoadingState />
@@ -190,7 +190,7 @@ export default function ResourcesPage() {
                 </thead>
                 <tbody>
                   {resources.data.map((resource) => (
-                    <tr key={resource.id} className="border-t border-border">
+                    <tr key={resource.id} className="border-t border-line">
                       <td className="px-4 py-2.5">
                         <span className="block font-medium text-fg">{resource.name}</span>
                         <span className="block font-mono text-xs text-fg-subtle">
@@ -212,7 +212,7 @@ export default function ResourcesPage() {
                               {resource.credentialRef}
                             </span>
                             {/* 값은 절대 표시하지 않는다. 설정 여부만 알린다. */}
-                            <Badge tone={resource.credentialConfigured ? 'active' : 'deny'}>
+                            <Badge tone={resource.credentialConfigured ? 'ok' : 'danger'}>
                               {resource.credentialConfigured ? '설정됨' : '환경변수 없음'}
                             </Badge>
                           </div>
@@ -221,7 +221,7 @@ export default function ResourcesPage() {
                         )}
                       </td>
                       <td className="px-4 py-2.5">
-                        <Badge tone={resource.enabled ? 'active' : 'locked'}>
+                        <Badge tone={resource.enabled ? 'ok' : 'neutral'}>
                           {resource.enabled ? 'ENABLED' : 'DISABLED'}
                         </Badge>
                       </td>

@@ -33,9 +33,9 @@ const ACTIONS = [
 ] as const;
 
 const EFFECT_TONE = {
-  ALLOW: 'active',
-  APPROVAL_REQUIRED: 'pending',
-  DENY: 'deny',
+  ALLOW: 'ok',
+  APPROVAL_REQUIRED: 'warn',
+  DENY: 'danger',
 } as const;
 
 export default function PoliciesPage() {
@@ -155,7 +155,7 @@ export default function PoliciesPage() {
         <Card>
           <CardHeader
             title="정책 목록"
-            description={policies.data ? `${policies.data.length}개` : undefined}
+            count={policies.data?.length}
           />
           {policies.loading ? (
             <LoadingState />
@@ -186,7 +186,7 @@ export default function PoliciesPage() {
                 </thead>
                 <tbody>
                   {policies.data.map((policy) => (
-                    <tr key={policy.id} className="border-t border-border">
+                    <tr key={policy.id} className="border-t border-line">
                       <td className="px-4 py-2.5">
                         <span className="block font-medium text-fg">{policy.name}</span>
                         {policy.description ? (
@@ -203,12 +203,12 @@ export default function PoliciesPage() {
                         {policy.actions.join(', ')}
                       </td>
                       <td className="px-4 py-2.5">
-                        <Badge tone={policy.inheritanceMode === 'LOCKED' ? 'locked' : 'accent'}>
+                        <Badge tone={policy.inheritanceMode === 'LOCKED' ? 'neutral' : 'accent'}>
                           {policy.inheritanceMode}
                         </Badge>
                       </td>
                       <td className="px-4 py-2.5">
-                        <Badge tone={policy.enabled ? 'active' : 'locked'}>
+                        <Badge tone={policy.enabled ? 'ok' : 'neutral'}>
                           {policy.enabled ? 'ENABLED' : 'DISABLED'}
                         </Badge>
                       </td>

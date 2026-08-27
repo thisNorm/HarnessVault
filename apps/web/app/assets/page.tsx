@@ -61,10 +61,10 @@ export default function AssetsPage() {
       <Card>
         <CardHeader
           title="Harness Assets"
-          description={assets.data ? `${assets.data.length}개` : undefined}
+          count={assets.data?.length}
         />
 
-        <div className="flex flex-wrap items-end gap-2.5 border-b border-border px-4 py-3">
+        <div className="flex flex-wrap items-end gap-2.5 border-b border-line px-4 py-3">
           <div className="w-44">
             <FilterField label="Type">
               <Select value={type} onChange={(e) => setType(e.target.value)}>
@@ -141,7 +141,7 @@ export default function AssetsPage() {
               </thead>
               <tbody>
                 {assets.data.map((asset) => (
-                  <tr key={asset.id} className="border-t border-border hover:bg-surface-hover">
+                  <tr key={asset.id} className="border-t border-line hover:bg-surface-3">
                     <td className="px-4 py-2.5">
                       <Link href={`/assets/${asset.id}`} className="block">
                         <span className="block font-medium text-fg">{asset.name}</span>
@@ -155,7 +155,7 @@ export default function AssetsPage() {
                       {asset.scopeType}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Badge tone={asset.inheritanceMode === 'LOCKED' ? 'locked' : 'accent'}>
+                      <Badge tone={asset.inheritanceMode === 'LOCKED' ? 'neutral' : 'accent'}>
                         {asset.inheritanceMode}
                       </Badge>
                     </td>

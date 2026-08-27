@@ -14,17 +14,18 @@ import {
   ErrorState,
   LoadingState,
   PageHeader,
+  StatusRail,
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  PENDING: 'pending',
-  APPROVED: 'active',
-  EXECUTING: 'pending',
-  EXECUTED: 'active',
-  REJECTED: 'deny',
-  FAILED: 'deny',
-  EXPIRED: 'locked',
-  CANCELLED: 'locked',
+  PENDING: 'warn',
+  APPROVED: 'ok',
+  EXECUTING: 'warn',
+  EXECUTED: 'ok',
+  REJECTED: 'danger',
+  FAILED: 'danger',
+  EXPIRED: 'neutral',
+  CANCELLED: 'neutral',
 } as const;
 
 export default function ApprovalsPage() {
@@ -84,13 +85,15 @@ export default function ApprovalsPage() {
       ) : (
         <div className="flex flex-col gap-4">
           <Card>
-            <CardHeader title="대기 중" description={`${pending.length}건`} />
+            <CardHeader title="대기 중" count={pending.length} />
             {pending.length === 0 ? (
               <EmptyState title="대기 중인 요청이 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {pending.map((item) => (
-                  <li key={item.id} className="px-4 py-4">
+                  <li key={item.id} className="relative px-4 py-3.5 pl-5">
+                    {/* 상태를 좌측 레일로 표시한다. 줄마다 배지를 반복하는 것보다 훑기 쉽다. */}
+                    <StatusRail tone={STATUS_TONE[item.status]} />
                     <RequestSummary item={item} />
                     <div className="mt-3 flex items-center gap-2">
                       {item.canDecide ? (
@@ -130,11 +133,11 @@ export default function ApprovalsPage() {
           </Card>
 
           <Card>
-            <CardHeader title="처리됨" description={`${rest.length}건`} />
+            <CardHeader title="처리됨" count={rest.length} />
             {rest.length === 0 ? (
               <EmptyState title="처리된 요청이 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {rest.slice(0, 30).map((item) => (
                   <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
                     <Badge tone={STATUS_TONE[item.status]}>{item.status}</Badge>
@@ -163,12 +166,12 @@ function RequestSummary({ item }: { item: ApprovalRequestView }) {
     <>
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={STATUS_TONE[item.status]}>{item.status}</Badge>
-        <Badge tone="deny">{item.action}</Badge>
+        <Badge tone="neutral">{item.action}</Badge>
         <span className="font-medium text-fg">{item.resourceName}</span>
-        <Badge tone="locked">{item.resourceClassification}</Badge>
+        <Badge tone="neutral">{item.resourceClassification}</Badge>
       </div>
       <p className="mt-2 text-sm text-fg-muted">{item.reason}</p>
-      <pre className="mt-2 overflow-x-auto rounded-sm border border-border bg-bg-raised px-3 py-2 font-mono text-xs whitespace-pre-wrap text-fg-muted">
+      <pre className="mt-2 overflow-x-auto rounded-sm border border-line bg-surface-2 px-3 py-2 font-mono text-xs whitespace-pre-wrap text-fg-muted">
         {item.proposedChange}
       </pre>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-fg-subtle">

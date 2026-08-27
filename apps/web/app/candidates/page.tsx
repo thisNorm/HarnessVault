@@ -16,13 +16,14 @@ import {
   Input,
   LoadingState,
   PageHeader,
+  StatusRail,
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  CANDIDATE: 'pending',
-  PROMOTED: 'active',
-  REJECTED: 'deny',
-  WITHDRAWN: 'locked',
+  CANDIDATE: 'warn',
+  PROMOTED: 'ok',
+  REJECTED: 'danger',
+  WITHDRAWN: 'neutral',
 } as const;
 
 export default function CandidatesPage() {
@@ -85,13 +86,15 @@ export default function CandidatesPage() {
       ) : (
         <div className="flex flex-col gap-4">
           <Card>
-            <CardHeader title="검토 대기" description={`${waiting.length}건`} />
+            <CardHeader title="검토 대기" count={waiting.length} />
             {waiting.length === 0 ? (
               <EmptyState title="검토할 기여가 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {waiting.map((item) => (
-                  <li key={item.id} className="px-4 py-4">
+                  <li key={item.id} className="relative px-4 py-3.5 pl-5">
+                    {/* 상태를 좌측 레일로 표시한다. 줄마다 배지를 반복하는 것보다 훑기 쉽다. */}
+                    <StatusRail tone={STATUS_TONE[item.status]} />
                     <Summary item={item} />
                     <CuratorPanel orgId={orgId} contributionId={item.id} />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -132,11 +135,11 @@ export default function CandidatesPage() {
           </Card>
 
           <Card>
-            <CardHeader title="처리됨" description={`${decided.length}건`} />
+            <CardHeader title="처리됨" count={decided.length} />
             {decided.length === 0 ? (
               <EmptyState title="처리된 기여가 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {decided.slice(0, 30).map((item) => (
                   <li key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
                     <Badge tone={STATUS_TONE[item.status]}>{item.status}</Badge>
@@ -182,7 +185,7 @@ function Summary({ item }: { item: ContributionSummary }) {
       ) : null}
 
       {item.duplicateOfAssetId ? (
-        <div className="mt-2 rounded-sm border border-state-pending/40 bg-bg-raised px-3 py-2 text-xs text-fg-muted">
+        <div className="mt-2 rounded-sm bg-warn-dim ring-1 ring-warn/25 ring-inset px-3 py-2 text-xs text-fg-muted">
           비슷한 자산이 이미 있습니다 (유사도{' '}
           {item.duplicateScore === null ? '?' : item.duplicateScore.toFixed(2)} ·{' '}
           {item.similarityMethod === 'VECTOR' ? '의미 검색' : '어휘 검색'}){' '}

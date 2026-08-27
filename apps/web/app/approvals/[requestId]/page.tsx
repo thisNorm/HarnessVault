@@ -18,14 +18,14 @@ import {
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  PENDING: 'pending',
-  APPROVED: 'active',
-  EXECUTING: 'pending',
-  EXECUTED: 'active',
-  REJECTED: 'deny',
-  FAILED: 'deny',
-  EXPIRED: 'locked',
-  CANCELLED: 'locked',
+  PENDING: 'warn',
+  APPROVED: 'ok',
+  EXECUTING: 'warn',
+  EXECUTED: 'ok',
+  REJECTED: 'danger',
+  FAILED: 'danger',
+  EXPIRED: 'neutral',
+  CANCELLED: 'neutral',
 } as const;
 
 export default function ApprovalDetailPage({
@@ -96,7 +96,7 @@ export default function ApprovalDetailPage({
 
           <Card>
             <CardHeader title="요청 근거" />
-            <dl className="divide-y divide-border">
+            <dl className="divide-y divide-line">
               <Block label="Reason" value={item.reason} required />
               <Block label="Risk" value={item.risk} />
               <Block label="Rollback" value={item.rollbackPlan} />
@@ -149,14 +149,14 @@ export default function ApprovalDetailPage({
           ) : null}
 
           <Card>
-            <CardHeader title="판단 기록" description={`${item.decisions.length}건`} />
+            <CardHeader title="판단 기록" count={item.decisions.length} />
             {item.decisions.length === 0 ? (
               <EmptyState title="아직 판단이 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {item.decisions.map((decision) => (
                   <li key={decision.userId} className="flex items-start gap-3 px-4 py-2.5">
-                    <Badge tone={decision.decision === 'APPROVE' ? 'active' : 'deny'}>
+                    <Badge tone={decision.decision === 'APPROVE' ? 'ok' : 'danger'}>
                       {decision.decision}
                     </Badge>
                     <div className="min-w-0">
@@ -177,7 +177,7 @@ export default function ApprovalDetailPage({
 
         <Card className="h-fit">
           <CardHeader title="요청 정보" />
-          <dl className="divide-y divide-border text-sm">
+          <dl className="divide-y divide-line text-sm">
             <Row label="Status">
               <Badge tone={STATUS_TONE[item.status]}>{item.status}</Badge>
             </Row>
@@ -204,10 +204,10 @@ export default function ApprovalDetailPage({
             </Row>
             <Row label="Resource">
               <span className="block text-fg">{item.resourceName}</span>
-              <Badge tone="locked">{item.resourceClassification}</Badge>
+              <Badge tone="neutral">{item.resourceClassification}</Badge>
             </Row>
             <Row label="Action">
-              <Badge tone="deny">{item.action}</Badge>
+              <Badge tone="neutral">{item.action}</Badge>
             </Row>
             <Row label="승인 정책">
               <span className="block text-xs">{item.approvalPolicyName ?? '—'}</span>
@@ -231,7 +231,7 @@ export default function ApprovalDetailPage({
             </Row>
             {item.failureReason ? (
               <Row label="실패 사유">
-                <span className="text-xs text-state-deny">{item.failureReason}</span>
+                <span className="text-xs text-danger">{item.failureReason}</span>
               </Row>
             ) : null}
           </dl>
@@ -267,7 +267,7 @@ function Block({
           value
         ) : (
           // 비어 있음을 드러낸다. 없는 것을 있는 것처럼 보이게 하지 않는다.
-          <span className={required ? 'text-state-deny' : 'text-fg-subtle'}>
+          <span className={required ? 'text-danger' : 'text-fg-subtle'}>
             {required ? '누락 — 필수 항목입니다' : '작성되지 않음'}
           </span>
         )}

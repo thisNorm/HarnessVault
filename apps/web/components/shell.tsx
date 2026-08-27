@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { orgLabel } from '@/lib/org-label';
 import { api } from '@/lib/api';
@@ -55,6 +56,23 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { session, organization, orgId, setOrgId } = useSession();
   const router = useRouter();
+  // 좁은 화면에서 사이드바는 서랍이 된다. 224px을 고정으로 두면 390px에서 본문이 166px만 남는다.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // 이동하면 서랍을 닫는다. 열린 채로 남으면 도착한 화면을 가린다.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  // Escape로 닫는다. 뒷막을 못 누르는 상황(키보드·스크린리더)에서 유일한 탈출구다.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   async function logout() {
     try {
@@ -68,15 +86,42 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg">
-      <aside className="fixed inset-y-0 left-0 flex w-sidebar flex-col border-r border-border bg-bg-raised">
-        <div className="flex h-header items-center gap-2 border-b border-border px-4">
-          <span className="size-4 rounded-xs border border-accent/60 bg-accent-soft" aria-hidden />
+      {/* 뒷막. 서랍이 열렸을 때만, 좁은 화면에서만. */}
+      {menuOpen ? (
+        <button
+          type="button"
+          aria-label="메뉴 닫기"
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-20 bg-bg/70 backdrop-blur-sm md:hidden"
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex w-sidebar flex-col border-r border-line bg-surface transition-transform duration-[120ms] md:translate-x-0 ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex h-header items-center gap-2 border-b border-line px-4">
+          <span
+            className="grid size-5 place-items-center rounded-md bg-accent text-accent-fg"
+            aria-hidden
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="size-3">
+              <path
+                d="M8 2.2 13 4.6v3.6c0 2.9-2 5.2-5 6.1-3-.9-5-3.2-5-6.1V4.6L8 2.2Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+              <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+            </svg>
+          </span>
           <span className="text-sm font-semibold tracking-tight">HarnessVault</span>
         </div>
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {NAV.map((group) => (
-            <div key={group.label} className="mb-4">
-              <p className="px-2 pb-1.5 text-2xs font-medium tracking-wider text-fg-subtle uppercase">
+            <div key={group.label} className="mb-5">
+              <p className="px-3 pb-2 text-2xs font-medium tracking-[0.08em] text-fg-subtle uppercase">
                 {group.label}
               </p>
               {group.items.map((item) => {
@@ -86,14 +131,21 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
-                    className={`mb-0.5 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors ${
+                    className={`relative mb-px flex items-center gap-2.5 rounded-md py-1.5 pr-2 pl-3 text-sm transition-[background-color,color] duration-[120ms] ${
                       active
-                        ? 'bg-accent-soft text-fg'
-                        : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+                        ? 'bg-accent-dim font-medium text-fg'
+                        : 'text-fg-muted hover:bg-surface-2 hover:text-fg'
                     }`}
                   >
-                    <span className={active ? 'text-accent-text' : 'text-fg-subtle'}>{item.icon}</span>
-                    {item.label}
+                    {/* 활성 표시는 좌측 2px 레일. 블록 전체를 칠하면 목록이 시끄럽다. */}
+                    {active ? (
+                      <span
+                        className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span className={active ? 'text-accent' : 'text-fg-subtle'}>{item.icon}</span>
+                    <span className="truncate">{item.label}</span>
                   </Link>
                 );
               })}
@@ -102,15 +154,26 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
 
-      <div className="pl-sidebar">
-        <header className="sticky top-0 z-10 flex h-header items-center justify-between gap-4 border-b border-border bg-bg/85 px-5 backdrop-blur">
-          <div className="flex min-w-0 items-center gap-2.5">
+      <div className="md:pl-sidebar">
+        <header className="sticky top-0 z-10 flex h-header items-center justify-between gap-3 border-b border-line bg-bg/80 px-4 backdrop-blur-md sm:px-5">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              aria-label="메뉴 열기"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(true)}
+              className="-ml-1 grid size-8 shrink-0 place-items-center rounded-md text-fg-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-fg md:hidden"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4">
+                <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" strokeLinecap="round" />
+              </svg>
+            </button>
             {orgs.length > 1 ? (
               <Select
                 aria-label="조직 선택"
                 value={orgId ?? ''}
                 onChange={(e) => setOrgId(e.target.value)}
-                className="max-w-56"
+                className="w-40 sm:w-52"
               >
                 {orgs.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -121,34 +184,31 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
             ) : (
               <span className="truncate text-sm font-medium">{organization?.name ?? '조직 없음'}</span>
             )}
-            {organization ? (
-              <span className="truncate font-mono text-xs text-fg-subtle">{organization.slug}</span>
+            {/* 좁은 화면에서는 숨긴다. 조직 이름이 먼저다. */}
+            {organization?.role ? (
+              <span className="hidden sm:inline">
+                <Badge tone="accent">{organization.role}</Badge>
+              </span>
             ) : null}
-            {organization?.role ? <Badge tone="accent">{organization.role}</Badge> : null}
           </div>
 
-          <div className="flex items-center gap-3">
-            {session.loading ? (
-              <Badge tone="pending">PENDING</Badge>
-            ) : session.error ? (
-              <Badge tone="deny">DENY</Badge>
-            ) : (
-              <Badge tone="active">ACTIVE</Badge>
-            )}
+          <div className="flex shrink-0 items-center gap-2">
             <details className="relative">
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-sm px-2 py-1 text-sm text-fg-muted hover:bg-surface-hover hover:text-fg">
-                <span className="grid size-5 place-items-center rounded-full border border-border bg-surface text-2xs">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 text-sm text-fg-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-fg">
+                <span className="grid size-[22px] place-items-center rounded-full bg-surface-3 text-2xs font-semibold text-fg-muted">
                   {session.data?.user.displayName.slice(0, 1).toUpperCase() ?? '?'}
                 </span>
-                {session.data?.user.displayName ?? '미인증'}
+                <span className="hidden truncate sm:inline">
+                  {session.data?.user.displayName ?? '미인증'}
+                </span>
               </summary>
-              <div className="absolute right-0 mt-1.5 w-56 rounded-md border border-border bg-surface p-1 shadow-lg shadow-black/40">
+              <div className="absolute right-0 z-30 mt-1.5 w-56 rounded-md bg-surface-2 p-1 shadow-pop">
                 <p className="truncate px-2 py-1.5 text-xs text-fg-subtle">
                   {session.data?.user.email ?? '세션 없음'}
                 </p>
                 <button
                   onClick={logout}
-                  className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-fg-muted hover:bg-surface-hover hover:text-fg"
+                  className="w-full rounded-sm px-2 py-1.5 text-left text-sm text-fg-muted hover:bg-surface-3 hover:text-fg"
                 >
                   로그아웃
                 </button>
@@ -157,7 +217,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-5 py-6">
+        <main className="mx-auto max-w-content px-5 py-6 sm:px-6">
           {session.loading ? (
             <LoadingState label="세션 확인 중" />
           ) : session.error ? (

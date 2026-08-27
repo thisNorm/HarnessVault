@@ -52,9 +52,9 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
 
       {/* 충돌을 감추지 않는다. Resolver가 RESOLUTION_CONFLICT로 거부하게 되는 상태다. */}
       {activeVersionCount > 1 ? (
-        <div className="mb-4 rounded-md border border-state-deny/30 bg-state-deny/5 px-4 py-3">
+        <div className="mb-4 rounded-md bg-danger-dim ring-1 ring-danger/25 ring-inset px-4 py-3">
           <div className="flex items-center gap-2">
-            <Badge tone="deny">RESOLUTION_CONFLICT</Badge>
+            <Badge tone="danger">RESOLUTION_CONFLICT</Badge>
             <span className="text-sm font-medium text-fg">
               ACTIVE 버전이 {activeVersionCount}개입니다
             </span>
@@ -68,7 +68,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex flex-col gap-4">
           <Card>
-            <CardHeader title="버전" description={`${versions.length}개 · 버전은 삭제되지 않습니다`} />
+            <CardHeader title="버전" count={versions.length} description="버전은 삭제되지 않습니다" />
             {versions.length === 0 ? (
               <EmptyState title="버전이 없습니다" />
             ) : (
@@ -84,7 +84,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
                   </thead>
                   <tbody>
                     {versions.map((version) => (
-                      <tr key={version.id} className="border-t border-border">
+                      <tr key={version.id} className="border-t border-line">
                         <td className="px-4 py-2.5 font-mono text-xs text-fg">{version.version}</td>
                         <td className="px-4 py-2.5">
                           <StatusBadge status={version.status} />
@@ -109,7 +109,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
             {relations.outgoing.length === 0 && relations.incoming.length === 0 ? (
               <EmptyState title="연결된 자산이 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {relations.outgoing.map((relation) => (
                   <RelationRow key={relation.id} relation={relation} direction="→" />
                 ))}
@@ -123,7 +123,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
 
         <Card className="h-fit">
           <CardHeader title="메타데이터" />
-          <dl className="divide-y divide-border text-sm">
+          <dl className="divide-y divide-line text-sm">
             <Row label="Type">
               <Badge tone="accent">{asset.type}</Badge>
             </Row>
@@ -134,7 +134,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
               <span className="font-mono text-xs">{asset.scopeType}</span>
             </Row>
             <Row label="Inheritance">
-              <Badge tone={asset.inheritanceMode === 'LOCKED' ? 'locked' : 'accent'}>
+              <Badge tone={asset.inheritanceMode === 'LOCKED' ? 'neutral' : 'accent'}>
                 {asset.inheritanceMode}
               </Badge>
             </Row>
@@ -152,7 +152,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ assetId:
                   {selectorEntries.map(([key, values]) => (
                     <span
                       key={key}
-                      className="rounded-xs border border-border bg-bg-raised px-1.5 py-0.5 font-mono text-2xs text-fg-muted"
+                      className="rounded-sm border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-2xs text-fg-muted"
                     >
                       {key}: {(values as string[]).join(', ')}
                     </span>

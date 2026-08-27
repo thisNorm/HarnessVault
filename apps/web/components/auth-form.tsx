@@ -61,12 +61,12 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
     <main className="grid min-h-screen place-items-center px-5 py-10">
       <div className="w-full max-w-88">
         <div className="mb-6 flex items-center gap-2">
-          <span className="size-4 rounded-xs border border-accent/60 bg-accent-soft" aria-hidden />
+          <span className="size-4 rounded-sm border border-accent/60 bg-accent-dim" aria-hidden />
           <span className="text-sm font-semibold tracking-tight">HarnessVault</span>
         </div>
 
-        <div className="rounded-lg border border-border bg-surface">
-          <div className="border-b border-border px-5 py-4">
+        <div className="rounded-lg border border-line bg-surface">
+          <div className="border-b border-line px-5 py-4">
             <h1 className="text-base font-semibold">{copy.title}</h1>
             <p className="mt-0.5 text-xs text-fg-muted">Company Harness Runtime 콘솔</p>
           </div>
@@ -111,7 +111,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
 
         <p className="mt-4 text-xs text-fg-muted">
           {copy.altText}{' '}
-          <Link href={copy.altHref} className="text-accent-text hover:text-fg">
+          <Link href={copy.altHref} className="text-accent hover:text-fg">
             {copy.altLabel}
           </Link>
         </p>

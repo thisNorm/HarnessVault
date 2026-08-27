@@ -69,11 +69,14 @@ export default function AnalyticsPage() {
 function Bundle({ data }: { data: AnalyticsBundle }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Metric label="자산" value={String(data.overview.totalAssets)} />
-        <Metric label="흐름" value={String(data.overview.totalTraces)} />
-        <Metric label="기여" value={String(data.overview.totalContributions)} />
-      </div>
+      {/* 같은 카드 3장을 나란히 두지 않는다. 판 하나에 구분선으로 나눈다. */}
+      <Card>
+        <dl className="grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <Metric label="자산" value={data.overview.totalAssets} />
+          <Metric label="흐름" value={data.overview.totalTraces} />
+          <Metric label="기여" value={data.overview.totalContributions} />
+        </dl>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
@@ -101,7 +104,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-2xs tracking-wide text-fg-subtle uppercase">
+                <tr className="border-b border-line text-left text-2xs tracking-wide text-fg-subtle uppercase">
                   <th className="px-4 py-2 font-medium">자산</th>
                   <th className="px-4 py-2 font-medium">주입</th>
                   <th className="px-4 py-2 font-medium">제외</th>
@@ -109,7 +112,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
                   <th className="px-4 py-2 font-medium">주 제외 사유</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {data.assetUsage.map((row) => (
                   <tr key={row.assetId}>
                     <td className="px-4 py-2">
@@ -146,10 +149,10 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
           {data.unusedAssets.length === 0 ? (
             <EmptyState title="모든 ACTIVE 자산이 한 번 이상 쓰였습니다" />
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-line">
               {data.unusedAssets.map((asset) => (
                 <li key={asset.assetId} className="flex items-center gap-2 px-4 py-2">
-                  <Badge tone="locked">{asset.type}</Badge>
+                  <Badge tone="neutral">{asset.type}</Badge>
                   <Link
                     href={`/assets/${asset.assetId}`}
                     className="min-w-0 flex-1 truncate text-sm hover:text-accent"
@@ -174,7 +177,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
           title="Context 효율"
           description="전부 추정치입니다. 갈래마다 신뢰도가 달라 한 숫자로 합치지 않습니다"
         />
-        <dl className="divide-y divide-border text-sm">
+        <dl className="divide-y divide-line text-sm">
           <AverageRow label="후보 평균" average={data.contextEfficiency.averageCandidates} />
           <AverageRow label="선택 평균" average={data.contextEfficiency.averageSelected} />
           <AverageRow
@@ -201,7 +204,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
             title="산출물 계약"
             description={`종료된 흐름 ${data.outputContract.completedTraces}건`}
           />
-          <dl className="divide-y divide-border text-sm">
+          <dl className="divide-y divide-line text-sm">
             <Row label="충족률">
               <span className="font-mono text-xs">
                 {data.outputContract.satisfiedRate === null
@@ -223,7 +226,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
         <Card>
           <CardHeader title="승인" />
           <Buckets items={data.approvals.byStatus} />
-          <dl className="divide-y divide-border border-t border-border text-sm">
+          <dl className="divide-y divide-line border-t border-line text-sm">
             <AverageRow
               label="판단까지 평균"
               average={data.approvals.averageDecisionSeconds}
@@ -241,7 +244,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
             description={`중복 표시 ${data.contributions.duplicateFlaggedCount}건`}
           />
           <Buckets items={data.contributions.byStatus} />
-          <dl className="divide-y divide-border border-t border-border text-sm">
+          <dl className="divide-y divide-line border-t border-line text-sm">
             <Row label="승격률">
               <span className="font-mono text-xs">
                 {data.contributions.promotedRate === null
@@ -258,7 +261,7 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
             description={`총 ${data.curator.totalRuns}회 · 실패 ${data.curator.failedCount}회`}
           />
           <Buckets items={data.curator.byVerdict} />
-          <div className="border-t border-border px-4 pt-2 text-2xs tracking-wide text-fg-subtle uppercase">
+          <div className="border-t border-line px-4 pt-2 text-2xs tracking-wide text-fg-subtle uppercase">
             무엇이 판단했는가
           </div>
           {/* MOCK 비율을 숨기지 않는다. 실제 모델이 얼마나 돌았는지가 보여야 한다. */}
@@ -269,12 +272,12 @@ function Bundle({ data }: { data: AnalyticsBundle }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <Card className="px-4 py-3">
-      <div className="text-2xs tracking-wide text-fg-subtle uppercase">{label}</div>
-      <div className="mt-1 font-mono text-2xl text-fg">{value}</div>
-    </Card>
+    <div className="px-4 py-3.5">
+      <dt className="text-2xs font-medium tracking-[0.04em] text-fg-subtle uppercase">{label}</dt>
+      <dd className="tabular mt-1.5 font-mono text-metric font-medium text-fg">{value}</dd>
+    </div>
   );
 }
 
@@ -288,13 +291,13 @@ function Buckets({ items }: { items: CountBucket[] }) {
           <span className="w-32 shrink-0 truncate text-xs text-fg-muted" title={item.label}>
             {item.label}
           </span>
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-raised">
+          <span className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3">
             <span
               className="block h-full rounded-full bg-accent"
               style={{ width: `${(item.count / max) * 100}%` }}
             />
           </span>
-          <span className="w-8 shrink-0 text-right font-mono text-xs text-fg-subtle">
+          <span className="tabular w-8 shrink-0 text-right font-mono text-xs text-fg-muted">
             {item.count}
           </span>
         </li>
@@ -305,7 +308,7 @@ function Buckets({ items }: { items: CountBucket[] }) {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-2.5">
+    <div className="flex items-center justify-between gap-4 px-4 py-2">
       <dt className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">{label}</dt>
       <dd className="min-w-0 text-right">{children}</dd>
     </div>
@@ -329,15 +332,21 @@ function AverageRow({
   const incomplete = average.sampleSize < average.totalCandidates;
   return (
     <Row label={label}>
-      <span className="font-mono text-xs">
-        {average.value === null ? '—' : `${prefix}${average.value}${suffix}`}
-      </span>
-      <span className="block text-2xs text-fg-subtle" title={hint}>
-        {average.totalCandidates === 0
-          ? '집계 대상 없음'
-          : incomplete
-            ? `${average.totalCandidates}건 중 ${average.sampleSize}건 집계`
-            : `${average.sampleSize}건 집계`}
+      <span className="flex items-baseline justify-end gap-2">
+        <span className="tabular font-mono text-xs text-fg">
+          {average.value === null ? '—' : `${prefix}${average.value}${suffix}`}
+        </span>
+        {/* 표본 수를 늘 함께 둔다. 모르는 값을 0으로 세지 않았다는 증거다. */}
+        <span
+          className={`shrink-0 text-2xs ${incomplete ? 'text-warn' : 'text-fg-subtle'}`}
+          title={hint}
+        >
+          {average.totalCandidates === 0
+            ? '대상 없음'
+            : incomplete
+              ? `${average.sampleSize}/${average.totalCandidates}건`
+              : `${average.sampleSize}건`}
+        </span>
       </span>
     </Row>
   );

@@ -217,8 +217,8 @@ function TabButton({
       aria-pressed={active}
       className={`rounded-sm border px-3 py-1.5 text-sm transition-colors ${
         active
-          ? 'border-accent/40 bg-accent-soft text-fg'
-          : 'border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg'
+          ? 'border-accent-line bg-accent-dim text-fg'
+          : 'border-line bg-surface text-fg-muted hover:bg-surface-3 hover:text-fg'
       }`}
     >
       {children}
@@ -234,17 +234,17 @@ function CompiledView({ compiled }: { compiled: CompiledHarness }) {
         title={`${compiled.metadata.target} 타깃 파일`}
         description="이 파일들이 에이전트 작업 디렉터리에 놓입니다. 콘솔은 실행하지 않습니다."
       />
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-line">
         {compiled.files.map((file) => (
           <li key={file.path}>
             <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 hover:bg-surface-hover">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 hover:bg-surface-3">
                 <span className="min-w-0 truncate font-mono text-sm text-fg">{file.path}</span>
                 <span className="shrink-0 font-mono text-2xs text-fg-subtle">
                   {file.content.length}자
                 </span>
               </summary>
-              <pre className="overflow-x-auto border-t border-border bg-bg-raised px-4 py-3 font-mono text-xs whitespace-pre text-fg-muted">
+              <pre className="overflow-x-auto border-t border-line bg-surface-2 px-4 py-3 font-mono text-xs whitespace-pre text-fg-muted">
                 {file.content}
               </pre>
             </details>
@@ -257,15 +257,15 @@ function CompiledView({ compiled }: { compiled: CompiledHarness }) {
 
 function ConflictCard({ conflicts }: { conflicts: Conflict[] }) {
   return (
-    <Card className="border-state-deny/40">
+    <Card className="ring-danger/35">
       <CardHeader
         title="RESOLUTION_CONFLICT"
         description="충돌이 있어 자동으로 선택하지 않았습니다. 어느 것을 쓸지는 사람이 정해야 합니다."
       />
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-line">
         {conflicts.map((conflict, index) => (
           <li key={`${conflict.key}-${index}`} className="flex items-start gap-3 px-4 py-3">
-            <Badge tone="deny">{conflict.kind}</Badge>
+            <Badge tone="danger">{conflict.kind}</Badge>
             <div className="min-w-0">
               <p className="font-mono text-sm text-fg">{conflict.key}</p>
               <p className="mt-0.5 text-xs text-fg-muted">{conflict.detail}</p>
@@ -333,7 +333,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
           <Stat
             label="예산 초과"
             value={resolution.budgetExceededByMandatory ? '필수 자산으로 초과' : '없음'}
-            tone={resolution.budgetExceededByMandatory ? 'deny' : undefined}
+            tone={resolution.budgetExceededByMandatory ? 'danger' : undefined}
           />
         </dl>
       </Card>
@@ -350,7 +350,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
               return (
                 <span
                   key={field}
-                  className="rounded-sm border border-border bg-bg-raised px-2 py-1 font-mono text-xs text-fg-muted"
+                  className="rounded-sm border border-line bg-surface-2 px-2 py-1 font-mono text-xs text-fg-muted"
                   title={source ? `${source.scope} · ${source.sourceName}` : undefined}
                 >
                   {field}
@@ -382,7 +382,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
               </thead>
               <tbody>
                 {selected.map((ref, index) => (
-                  <tr key={ref.assetId} className="border-t border-border">
+                  <tr key={ref.assetId} className="border-t border-line">
                     <td className="px-4 py-2.5 font-mono text-xs text-fg-subtle">
                       {String(index + 1).padStart(2, '0')}
                     </td>
@@ -396,7 +396,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
                       <div className="flex items-center gap-1.5">
                         <Badge tone="accent">{ref.type}</Badge>
                         <span className="font-mono text-xs text-fg-muted">{ref.scope}</span>
-                        {ref.mandatory ? <Badge tone="locked">필수</Badge> : null}
+                        {ref.mandatory ? <Badge tone="neutral">필수</Badge> : null}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs text-fg-muted">{ref.version}</td>
@@ -436,7 +436,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
               </thead>
               <tbody>
                 {manifest.excluded.map((ref) => (
-                  <tr key={`${ref.assetId}-${ref.reasonCode}`} className="border-t border-border">
+                  <tr key={`${ref.assetId}-${ref.reasonCode}`} className="border-t border-line">
                     <td className="px-4 py-2.5">
                       <Link href={`/assets/${ref.assetId}`} className="hover:underline">
                         <span className="block text-fg-muted">{ref.name}</span>
@@ -445,7 +445,7 @@ function ManifestView({ manifest }: { manifest: ResolvedManifest }) {
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        <Badge tone="locked">{ref.type}</Badge>
+                        <Badge tone="neutral">{ref.type}</Badge>
                         <span className="font-mono text-xs text-fg-subtle">{ref.scope}</span>
                       </div>
                     </td>
@@ -475,13 +475,13 @@ function Stat({
   label: string;
   value: string;
   hint?: string;
-  tone?: 'deny';
+  tone?: 'danger';
 }) {
   return (
     <div className="bg-surface px-4 py-3">
       <dt className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">{label}</dt>
       <dd
-        className={`mt-1 font-mono text-sm ${tone === 'deny' ? 'text-state-deny' : 'text-fg'}`}
+        className={`mt-1 font-mono text-sm ${tone === 'danger' ? 'text-danger' : 'text-fg'}`}
         title={hint}
       >
         {value}

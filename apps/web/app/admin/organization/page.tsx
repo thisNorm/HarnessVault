@@ -112,7 +112,7 @@ export default function OrganizationPage() {
           }
         />
 
-        <form onSubmit={addMember} className="flex items-end gap-2.5 border-b border-border px-4 py-3">
+        <form onSubmit={addMember} className="flex items-end gap-2.5 border-b border-line px-4 py-3">
           <div className="w-72">
             <Field label="이메일">
               <Input name="email" type="email" required placeholder="member@company.com" />

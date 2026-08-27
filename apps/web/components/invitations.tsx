@@ -17,10 +17,10 @@ import {
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  PENDING: 'pending',
-  ACCEPTED: 'active',
-  REVOKED: 'locked',
-  EXPIRED: 'locked',
+  PENDING: 'warn',
+  ACCEPTED: 'ok',
+  REVOKED: 'neutral',
+  EXPIRED: 'neutral',
 } as const;
 
 const STATUS_LABEL = {
@@ -101,7 +101,7 @@ export function Invitations({ orgId }: { orgId: string }) {
         }
       />
 
-      <form onSubmit={invite} className="flex flex-wrap items-end gap-2.5 border-b border-border px-4 py-3">
+      <form onSubmit={invite} className="flex flex-wrap items-end gap-2.5 border-b border-line px-4 py-3">
         <div className="w-72">
           <Field label="이메일">
             <Input name="email" type="email" required placeholder="newcomer@company.com" />
@@ -130,17 +130,17 @@ export function Invitations({ orgId }: { orgId: string }) {
       </form>
 
       {issued ? (
-        <div className="border-b border-border bg-bg-raised px-4 py-3">
+        <div className="border-b border-line bg-surface-2 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="active">링크 생성됨</Badge>
+            <Badge tone="ok">링크 생성됨</Badge>
             <span className="text-xs text-fg-muted">{issued.email}</span>
             {/* 원문을 저장하지 않으므로 정말로 다시 볼 수 없다. 숨기지 않고 말한다. */}
-            <span className="ml-auto text-2xs text-state-pending">
+            <span className="ml-auto text-2xs text-warn">
               이 링크는 지금만 볼 수 있습니다. 닫으면 다시 만들어야 합니다
             </span>
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-sm border border-border bg-bg px-2 py-1.5 font-mono text-xs text-fg">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-sm border border-line bg-bg px-2 py-1.5 font-mono text-xs text-fg">
               {link}
             </code>
             <Button
@@ -176,7 +176,7 @@ export function Invitations({ orgId }: { orgId: string }) {
       ) : (invitations.data ?? []).length === 0 ? (
         <EmptyState title="아직 초대가 없습니다" />
       ) : (
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-line">
           {(invitations.data ?? []).map((item) => (
             <li key={item.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
               <Badge tone={STATUS_TONE[item.status]}>{STATUS_LABEL[item.status]}</Badge>
@@ -185,7 +185,7 @@ export function Invitations({ orgId }: { orgId: string }) {
               {item.status === 'ACCEPTED' && item.acceptedByEmail !== item.email ? (
                 // 초대한 이메일과 수락한 사람이 다르면 반드시 드러낸다.
                 <span
-                  className="text-2xs text-state-pending"
+                  className="text-2xs text-warn"
                   title="초대한 이메일과 다른 계정이 수락했습니다"
                 >
                   {item.acceptedByEmail}(이) 수락

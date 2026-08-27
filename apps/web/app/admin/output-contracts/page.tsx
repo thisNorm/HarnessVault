@@ -27,10 +27,10 @@ import {
 } from '@/components/ui';
 
 const SCOPE_TONE = {
-  COMPANY: 'locked',
+  COMPANY: 'neutral',
   TEAM: 'accent',
-  PROJECT: 'active',
-  PERSONAL: 'pending',
+  PROJECT: 'ok',
+  PERSONAL: 'warn',
 } as const;
 
 export default function OutputContractsPage() {
@@ -181,7 +181,7 @@ export default function OutputContractsPage() {
           title="지금 적용되는 계약"
           description="에이전트가 company.output_contract로 받는 것과 같은 값입니다."
         />
-        <div className="flex flex-wrap items-end gap-2.5 border-b border-border px-4 py-3">
+        <div className="flex flex-wrap items-end gap-2.5 border-b border-line px-4 py-3">
           <div className="w-56">
             <Field label="프로젝트">
               <Select
@@ -208,12 +208,12 @@ export default function OutputContractsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-2xs tracking-wide text-fg-subtle uppercase">
+                <tr className="border-b border-line text-left text-2xs tracking-wide text-fg-subtle uppercase">
                   <th className="px-4 py-2 font-medium">항목</th>
                   <th className="px-4 py-2 font-medium">요구한 곳</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {resolved.requiredFields.map((field) => {
                   const source = resolved.sourceMap[field];
                   return (
@@ -241,7 +241,7 @@ export default function OutputContractsPage() {
       <Card>
         <CardHeader
           title="등록된 계약"
-          description={contracts.data ? `${contracts.data.length}개` : undefined}
+          count={contracts.data?.length}
         />
         {contracts.loading ? (
           <LoadingState />
@@ -255,7 +255,7 @@ export default function OutputContractsPage() {
         ) : (contracts.data ?? []).length === 0 ? (
           <EmptyState title="등록된 계약이 없습니다" hint="계약이 없으면 요구 항목도 없습니다" />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {(contracts.data ?? []).map((contract) => (
               <li key={contract.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -269,7 +269,7 @@ export default function OutputContractsPage() {
                   {contract.fields.map((field) => (
                     <span
                       key={field}
-                      className="rounded-sm border border-border bg-bg-raised px-2 py-0.5 font-mono text-2xs text-fg-muted"
+                      className="rounded-sm border border-line bg-surface-2 px-2 py-0.5 font-mono text-2xs text-fg-muted"
                     >
                       {field}
                     </span>

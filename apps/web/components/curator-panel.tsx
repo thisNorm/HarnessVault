@@ -6,12 +6,12 @@ import { ApiError, api, post, type CuratorRunView } from '@/lib/api';
 import { Badge, Button } from '@/components/ui';
 
 const VERDICT_TONE = {
-  DUPLICATE: 'pending',
+  DUPLICATE: 'warn',
   VARIANT_OF: 'accent',
-  IMPROVEMENT_ON: 'active',
-  CONFLICTS_WITH: 'deny',
-  NEW: 'active',
-  UNKNOWN: 'locked',
+  IMPROVEMENT_ON: 'ok',
+  CONFLICTS_WITH: 'danger',
+  NEW: 'ok',
+  UNKNOWN: 'neutral',
 } as const;
 
 const VERDICT_LABEL = {
@@ -71,7 +71,7 @@ export function CuratorPanel({
   const latest = runs?.[0];
 
   return (
-    <div className="mt-3 rounded-sm border border-border bg-bg-raised px-3 py-2.5">
+    <div className="mt-3 rounded-sm border border-line bg-surface-2 px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-2xs font-medium tracking-wide text-fg-subtle uppercase">
           Curator
@@ -94,7 +94,7 @@ export function CuratorPanel({
         </span>
       </div>
 
-      {error ? <p className="mt-2 text-xs text-state-deny">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
 
       {latest ? <RunView run={latest} /> : null}
 
@@ -125,7 +125,7 @@ function RunView({ run }: { run: CuratorRunView }) {
     return (
       <div className="mt-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="deny">{run.failureCode ?? 'FAILED'}</Badge>
+          <Badge tone="danger">{run.failureCode ?? 'FAILED'}</Badge>
           <span className="text-xs text-fg-muted">{run.failureMessage}</span>
         </div>
         {/* Curator가 없어도 사람은 판단할 수 있어야 한다(§61). */}
@@ -181,7 +181,7 @@ function RunView({ run }: { run: CuratorRunView }) {
       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-2xs text-fg-subtle">
         {run.provider === 'MOCK' ? (
           // Mock이 성공인 척하면 안 된다(§72). 화면에서도 밝힌다.
-          <span className="text-state-pending" title="실제 모델이 아니라 유사도만 본 결과입니다">
+          <span className="text-warn" title="실제 모델이 아니라 유사도만 본 결과입니다">
             실제 모델이 판단한 것이 아닙니다 (MOCK)
           </span>
         ) : (

@@ -180,7 +180,7 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
             }
           />
 
-          <form onSubmit={create} className="flex flex-col gap-2.5 border-b border-border px-4 py-3">
+          <form onSubmit={create} className="flex flex-col gap-2.5 border-b border-line px-4 py-3">
             <Field label="이름">
               <Input name="name" required placeholder={`${config.title} 이름`} />
             </Field>
@@ -223,12 +223,12 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
               {list.data.map((item) => {
                 const active = item.id === selectedId;
                 return (
-                  <li key={item.id} className="border-t border-border">
+                  <li key={item.id} className="border-t border-line">
                     <button
                       onClick={() => setSelectedId(item.id)}
                       aria-current={active ? 'true' : undefined}
                       className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors ${
-                        active ? 'bg-accent-soft' : 'hover:bg-surface-hover'
+                        active ? 'bg-accent-dim' : 'hover:bg-surface-3'
                       }`}
                     >
                       <span className="min-w-0">
@@ -264,7 +264,7 @@ export function ScopeAdmin({ kind }: { kind: ScopeKind }) {
             <>
               <form
                 onSubmit={addMember}
-                className="flex items-end gap-2.5 border-b border-border px-4 py-3"
+                className="flex items-end gap-2.5 border-b border-line px-4 py-3"
               >
                 <div className="w-72">
                   <Field label="사용자">

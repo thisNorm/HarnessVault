@@ -15,10 +15,10 @@ import {
 } from '@/components/ui';
 
 const STATUS_TONE = {
-  OPEN: 'pending',
-  COMPLETED: 'active',
-  FAILED: 'deny',
-  CANCELLED: 'locked',
+  OPEN: 'warn',
+  COMPLETED: 'ok',
+  FAILED: 'danger',
+  CANCELLED: 'neutral',
 } as const;
 
 export default function TracesPage() {
@@ -49,7 +49,7 @@ export default function TracesPage() {
           <Card>
             <CardHeader
               title="작업 흐름"
-              description={`${traces.data?.traces.length ?? 0}건`}
+              count={traces.data?.traces.length ?? 0}
             />
             {!traces.data || traces.data.traces.length === 0 ? (
               <EmptyState
@@ -76,7 +76,7 @@ export default function TracesPage() {
                         trace.selectedAssetCount,
                       );
                       return (
-                        <tr key={trace.id} className="border-t border-border hover:bg-surface-hover">
+                        <tr key={trace.id} className="border-t border-line hover:bg-surface-3">
                           <td className="px-4 py-2.5">
                             <Link href={`/traces/${trace.id}`} className="block">
                               <span className="block truncate font-medium text-fg">
@@ -140,7 +140,7 @@ export default function TracesPage() {
             {!traces.data || traces.data.untracked.length === 0 ? (
               <EmptyState title="흐름 없는 이벤트가 없습니다" />
             ) : (
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-line">
                 {traces.data.untracked.slice(0, 20).map((event) => (
                   <li key={event.id} className="flex items-center gap-3 px-4 py-2">
                     <span className="font-mono text-xs text-fg-muted">{event.eventType}</span>
