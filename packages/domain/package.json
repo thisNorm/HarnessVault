@@ -10,12 +10,14 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "zod": "^4"
+    "zod": "^4.5.4"
   }
 }
