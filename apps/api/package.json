@@ -15,19 +15,19 @@
     "setup:resources": "node test/setup-resources.mjs"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.10",
+    "@nestjs/cli": "^12.0.11",
     "@types/express": "^5.0.6",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "drizzle-kit": "^0.31.11"
   },
   "dependencies": {
     "@harnessvault/domain": "*",
-    "@modelcontextprotocol/sdk": "^1.32.1",
-    "@nestjs/common": "^12.2.0",
-    "@nestjs/core": "^12.2.0",
-    "@nestjs/platform-express": "^12.2.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@nestjs/common": "^12.3.2",
+    "@nestjs/core": "^12.3.2",
+    "@nestjs/platform-express": "^12.3.2",
     "drizzle-orm": "^0.45.4",
-    "postgres": "^3.4.9",
+    "postgres": "^4.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.7"
