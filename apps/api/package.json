@@ -23,11 +23,11 @@
   "dependencies": {
     "@harnessvault/domain": "*",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@nestjs/common": "^12.3.2",
-    "@nestjs/core": "^12.3.2",
-    "@nestjs/platform-express": "^12.3.2",
+    "@nestjs/common": "^12.3.3",
+    "@nestjs/core": "^12.3.3",
+    "@nestjs/platform-express": "^12.3.3",
     "drizzle-orm": "^0.45.4",
-    "postgres": "^4.0.0",
+    "postgres": "^4.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.7"
